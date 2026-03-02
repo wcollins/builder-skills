@@ -1,0 +1,20 @@
+{
+  "mop": {
+    "name": "",
+    "passRule": true,
+    "commands": [
+      {
+        "command": "",
+        "passRule": true,
+        "rules": [
+          {
+            "rule": "",
+            "eval": "contains",
+            "severity": "error",
+            "evaluation": "pass"
+          }
+        ]
+      }
+    ]
+  }
+}

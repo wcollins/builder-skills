@@ -1,0 +1,5 @@
+{
+  "members": [
+    { "type": "account", "role": "owner", "reference": "" }
+  ]
+}

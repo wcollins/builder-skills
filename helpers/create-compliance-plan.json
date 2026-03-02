@@ -1,0 +1,16 @@
+{
+  "name": "",
+  "options": {
+    "description": "",
+    "nodes": [
+      {
+        "treeId": "",
+        "version": "initial",
+        "nodeId": "",
+        "devices": [""],
+        "deviceGroups": [],
+        "variables": {}
+      }
+    ]
+  }
+}

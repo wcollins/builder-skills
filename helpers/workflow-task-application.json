@@ -1,0 +1,22 @@
+{
+  "_comment": "Template for adding an Application task to a workflow. Task ID should be a short hex string (e.g., a1b2). Task name MUST come from the task palette - use GET /automation-studio/locations/Application/packages/{app}/tasks/{method}?dereferenceSchemas=true to get the schema.",
+  "name": "",
+  "canvasName": "",
+  "summary": "",
+  "description": "",
+  "location": "Application",
+  "locationType": null,
+  "app": "",
+  "type": "operation",
+  "displayName": "",
+  "variables": {
+    "incoming": {},
+    "outgoing": {},
+    "error": "",
+    "decorators": []
+  },
+  "groups": [],
+  "actor": "Pronghorn",
+  "scheduled": false,
+  "nodeLocation": { "x": 600, "y": 1308 }
+}

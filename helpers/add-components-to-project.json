@@ -1,0 +1,7 @@
+{
+  "components": [
+    { "type": "workflow", "reference": "", "folder": "/" },
+    { "type": "template", "reference": "", "folder": "/" }
+  ],
+  "mode": "move"
+}

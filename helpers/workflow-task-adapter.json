@@ -1,0 +1,22 @@
+{
+  "_comment": "Template for adding an Adapter task to a workflow. Task ID should be a short hex string (e.g., 303c). Task name MUST come from the task palette - use GET /automation-studio/locations/Adapter/packages/{adapter}/tasks/{method}?dereferenceSchemas=true to get the schema.",
+  "name": "",
+  "canvasName": "",
+  "summary": "",
+  "description": "",
+  "location": "Adapter",
+  "locationType": "",
+  "app": "",
+  "type": "automatic",
+  "displayName": "",
+  "variables": {
+    "incoming": {},
+    "outgoing": {},
+    "error": "",
+    "decorators": []
+  },
+  "groups": [],
+  "actor": "Pronghorn",
+  "scheduled": false,
+  "nodeLocation": { "x": 600, "y": 1308 }
+}
