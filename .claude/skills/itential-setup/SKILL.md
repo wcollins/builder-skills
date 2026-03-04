@@ -214,6 +214,15 @@ jq '.paths["/configuration_manager/devices"].post.requestBody' {use-case}/openap
 
 **When an API call fails or returns 404:** look it up in `openapi.json` first. Don't guess.
 
+**When debugging ANY issue — check local files FIRST, not the API:**
+- Wrong field name? → `openapi.json` has every request body schema with exact field names and types
+- Task not found? → `tasks.json` has all 11,000+ tasks — search with grep or jq
+- Wrong app name? → `apps.json` has the correct casing
+- Payload structure unclear? → `openapi.json` has the full schema, `task-schemas.json` has task variable definitions
+- Already fetched a schema? → Check `task-schemas.json` before calling `multipleTaskDetails` again
+
+**The filesystem is your debugger.** Stop guessing and read the local files — the answer is already there.
+
 ## Key Adapter Mapping
 
 - `app` field in workflow tasks uses `apps/list` `name` (e.g., `Servicenow`)

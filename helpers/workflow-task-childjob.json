@@ -1,0 +1,31 @@
+{
+  "_comment": "Template for a childJob task. Calls another workflow as a sub-job. actor MUST be 'job', task MUST be empty string. The engine auto-sets task at runtime. Fill in incoming.workflow with the child workflow name. Set incoming.variables with data to pass. For looping, set incoming.data_array and incoming.loopType ('parallel' or 'sequential').",
+  "name": "childJob",
+  "canvasName": "childJob",
+  "summary": "Run Child Automation",
+  "description": "Runs another workflow as a child job",
+  "location": "Application",
+  "locationType": null,
+  "app": "WorkFlowEngine",
+  "type": "operation",
+  "displayName": "WorkFlowEngine",
+  "variables": {
+    "incoming": {
+      "task": "",
+      "workflow": "$var.job.childWorkflowName",
+      "variables": {},
+      "data_array": "",
+      "transformation": "",
+      "loopType": ""
+    },
+    "outgoing": {
+      "job_details": null
+    },
+    "error": "",
+    "decorators": []
+  },
+  "groups": [],
+  "actor": "job",
+  "scheduled": false,
+  "nodeLocation": { "x": 600, "y": 1308 }
+}

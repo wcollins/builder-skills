@@ -253,8 +253,14 @@ Execute the locked plan step by step.
 4. **Create on platform** — POST to the API
 5. **Test** — run the test from the plan
 6. **Review output** — check actual task output, not just job status. CLI commands can fail silently.
-7. **Fix and iterate** — edit local JSON, PUT to update (don't recreate)
-8. **Move on** — only after the current step passes
+7. **When something fails — check local files FIRST:**
+   - Wrong field name or payload structure? → `jq '.paths["/the/endpoint"].post.requestBody' {use-case}/openapi.json`
+   - Task not found? → `grep -i "keyword" {use-case}/tasks.json`
+   - Need task schema? → Check `{use-case}/task-schemas.json` before calling `multipleTaskDetails` again
+   - Wrong app name or casing? → `jq '.[].name' {use-case}/apps.json`
+   - **Don't guess, don't burn API calls — the answer is already on disk.**
+8. **Fix and iterate** — edit local JSON, PUT to update (don't recreate)
+9. **Move on** — only after the current step passes
 
 ### Patterns to Follow
 

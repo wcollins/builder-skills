@@ -41,8 +41,13 @@ Each skill owns a domain. **Invoke the skill using the Skill tool before working
 
 **Before making any API call:**
 1. Check the relevant skill for the pattern
-2. If unsure about method/body/response, search `openapi.json` locally — `jq '.paths["/the/endpoint"]'`
+2. Search `openapi.json` locally to confirm the endpoint, method, request body, and response schema — `jq '.paths["/the/endpoint"]'`
 3. Never hardcode API assumptions — the spec is the source of truth
+
+**Before fetching task schemas:**
+1. Check if `{use-case}/task-schemas.json` exists — search it first with `jq` or `grep`
+2. Only call `multipleTaskDetails` for tasks NOT already in the local file
+3. After fetching, always append to the local file so future lookups are instant
 
 **Before parsing any local JSON file:**
 1. Check the response shape first — `jq type` and `jq keys` on the file
@@ -56,10 +61,15 @@ Each skill owns a domain. **Invoke the skill using the Skill tool before working
    - `tasks.json` → plain array `[...]`
 4. Use `jq` for parsing, not inline Python scripts with isinstance fallbacks
 
-**When something fails or returns unexpected data:**
-1. Check `openapi.json` for the correct endpoint, method, and schema
-2. Check `job.error` array for runtime errors (not just task status)
-3. Review actual task output — `status: complete` doesn't mean the CLI commands worked
+**When something fails or returns unexpected data — check local files FIRST:**
+1. **`openapi.json`** — verify the endpoint exists, check the method (GET vs POST), read the request body schema and response schema. This file has EVERY endpoint, field, and type. Don't guess what a payload looks like — look it up.
+2. **`tasks.json`** — verify the task name, app, location. If a task is "not found," search here first.
+3. **`task-schemas.json`** — if you already fetched schemas, the full input/output definition is here. Check field names, types, required vs optional.
+4. **`adapters.json` / `apps.json`** — verify adapter instance names, app names, casing. Adapter names from `apps.json` (type name) differ from `adapters.json` (instance name).
+5. **`job.error` array** — for runtime errors (not just task status)
+6. **Actual task output** — `status: complete` doesn't mean the CLI commands worked
+
+**The filesystem is your debugger.** Every API endpoint, every task schema, every adapter name is already saved locally after bootstrap. Never guess a payload structure, field name, or endpoint path — the answer is in these files. Reading a local file costs zero API calls and zero time.
 
 ## Understanding User Intent
 
@@ -125,8 +135,13 @@ When something fails: check `job.status`, check `job.error` array, look at `IAPe
    - Workflow wiring: `$var.job.x`
    - childJob/merge refs: `{"task": "job", "value": "varName"}`
 7. **Validation errors = draft workflow** that cannot be started
-8. **`$var` references don't resolve inside object values** (e.g., inside `newVariable` value)
-9. **Use skills, don't reimplement** — each skill owns its domain
+8. **`$var` references don't resolve inside object values** (e.g., inside `newVariable` value) — use a merge task to build objects from resolved values
+9. **Task IDs are hex-only** — `[0-9a-f]{1,4}`. Non-hex IDs (e.g., `apush`) cause `$var` references to silently fail (classified as static, never resolved)
+10. **`genericAdapterRequest` prepends the adapter's `base_path`** to `uriPath` — don't include `/api/v1` in `uriPath`. Use `genericAdapterRequestNoBasePath` if you need the full path
+11. **Create projects first, then build inside them** — moving/copying assets into a project re-prefixes names and changes `_id` but does NOT update internal references (childJob workflow refs, template names, transformation IDs)
+12. **API response shapes vary** — most POST/GET return `{message, data, metadata}`, but `GET /automation-studio/workflows` returns `{items, skip, limit, total}`. Always check the response shape before parsing
+13. **Project component types** — valid values: `workflow`, `template`, `transformation`, `jsonForm`, `mopCommandTemplate`, `mopAnalyticTemplate`
+14. **Use skills, don't reimplement** — each skill owns its domain
 
 ## Helper JSON Templates
 
@@ -139,6 +154,7 @@ Helper templates are in `helpers/`:
 | `create-workflow.json` | Workflow scaffold with start/end tasks |
 | `workflow-task-adapter.json` | Adapter task template |
 | `workflow-task-application.json` | Application task template |
+| `workflow-task-childjob.json` | childJob task template (actor: "job") |
 | `create-command-template.json` | Command template with `<!var!>` syntax |
 | `create-template-jinja2.json` | Jinja2 template |
 | `create-template-textfsm.json` | TextFSM template |

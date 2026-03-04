@@ -813,13 +813,86 @@ After discovering tasks, save full schemas locally too:
 POST /automation-studio/multipleTaskDetails?dereferenceSchemas=true → save to {use-case}/task-schemas.json
 ```
 
+## Filesystem-First Debugging
+
+**CRITICAL: The local filesystem has complete API documentation and platform data. Always check local files before making API calls or guessing.**
+
+After bootstrap, your use-case directory contains everything you need:
+
+| File | What it answers |
+|------|-----------------|
+| `openapi.json` | What endpoints exist? What method (GET/POST/PUT)? What's the request body schema? What does the response look like? What fields are required vs optional? |
+| `tasks.json` | What's the task called? What app provides it? What are the incoming/outgoing variable names? Is it deprecated? |
+| `task-schemas.json` | What are the full types, descriptions, and examples for each task's variables? (saved after first schema fetch) |
+| `apps.json` | What's the correct app name? What type is it (Application/Adapter)? |
+| `adapters.json` | What's the adapter instance name? What package? Is it running? |
+| `applications.json` | Is the application healthy? What state is it in? |
+| `environment.md` | Quick reference: which adapters map to which types, task counts per source |
+
+### When to check local files
+
+**Before building a request body:** Don't guess field names or structure. Look it up:
+```bash
+# What fields does this endpoint expect?
+jq '.paths["/automation-studio/templates"].post.requestBody.content["application/json"].schema' {use-case}/openapi.json
+
+# What does the response look like?
+jq '.paths["/automation-studio/templates"].post.responses["200"]' {use-case}/openapi.json
+```
+
+**Before fetching task schemas:** Check if you already have them:
+```bash
+# Search local task-schemas.json first
+jq '.[] | select(.name == "renderJinjaTemplate")' {use-case}/task-schemas.json
+
+# Only call multipleTaskDetails for tasks NOT already saved locally
+```
+
+**When a task isn't found:** Search the local catalog, don't guess:
+```bash
+# Search by keyword
+grep -i "compliance" {use-case}/tasks.json | grep '"name"'
+
+# Search by app
+jq '.[] | select(.app == "ConfigurationManager") | .name' {use-case}/tasks.json
+```
+
+**When a field name seems wrong:** Check the schema, don't try variations:
+```bash
+# Get the exact field names for a task
+jq '.[] | select(.name == "childJob") | .variables.incoming | keys' {use-case}/task-schemas.json
+```
+
+**When an API call returns 404 or unexpected data:**
+```bash
+# Verify the endpoint exists and check the method
+jq '.paths | keys[] | select(contains("templates"))' {use-case}/openapi.json
+
+# Check if it's GET, POST, PUT, etc.
+jq '.paths["/automation-studio/templates"] | keys' {use-case}/openapi.json
+```
+
+### Common mistakes this prevents
+
+| Mistake | Local file that prevents it |
+|---------|----------------------------|
+| Wrong HTTP method (GET vs POST) | `openapi.json` — `.paths[endpoint] \| keys` |
+| Wrong field name in request body | `openapi.json` — `.requestBody.content...schema.properties \| keys` |
+| Wrong task name (typo or invented) | `tasks.json` — grep for the real name |
+| Wrong app casing (`servicenow` vs `Servicenow`) | `apps.json` — exact name |
+| Wrong adapter instance name | `adapters.json` — `.results[].id` |
+| Re-fetching schemas you already have | `task-schemas.json` — search before calling API |
+| Guessing response wrapper (`data` vs `items`) | `openapi.json` — response schema |
+
+**Rule: If you're about to guess, stop and read a file instead. The answer is already on disk.**
+
 ## Testing and Running Workflows
 
 ### Test Individual Tasks
 
 Some tasks have standalone REST endpoints (e.g., `POST /workflow_engine/query`), but many tasks (array ops, string ops, etc.) only work inside a running workflow. The reliable way to test any task:
 
-1. **Get the schema first** - always call `multipleTaskDetails?dereferenceSchemas=true` before building
+1. **Get the schema first** - check `{use-case}/task-schemas.json` locally, or call `multipleTaskDetails?dereferenceSchemas=true` if not cached
 2. **Create a minimal test workflow** - `start → task → end` with the task's exact incoming/outgoing variable names from the schema
 3. **Start the job** - `POST /operations-manager/jobs/start`
 4. **Check the result** - `GET /operations-manager/jobs/{jobId}` and inspect the `variables` object
@@ -942,69 +1015,103 @@ Note: `merge` uses `"variable"` not `"value"` in its reference objects.
 
 ### childJob Task Patterns
 
-The `childJob` task calls another workflow as a sub-job. It has three modes:
+The `childJob` task calls another workflow as a sub-job. **Use the helper template** `helpers/workflow-task-childjob.json` as your starting point.
 
-**No loop** - run a single child job with static or parent-referenced variables:
+**Complete childJob task template (copy-paste ready):**
 ```json
 {
   "name": "childJob",
+  "canvasName": "childJob",
+  "summary": "Run Child Job",
+  "description": "Runs a child job inside a workflow.",
+  "location": "Application",
+  "locationType": null,
   "app": "WorkFlowEngine",
   "type": "operation",
-  "actor": "job",
+  "displayName": "WorkFlowEngine",
   "variables": {
     "incoming": {
       "task": "",
-      "workflow": "Test Array Concat",
-      "variables": {
-        "arr": {"task": "static", "value": ["apple"]},
-        "arrayN": {"task": "job", "value": "myJobVar"}
-      },
+      "workflow": "Child Workflow Name",
+      "variables": {},
       "data_array": "",
       "transformation": "",
       "loopType": ""
     },
-    "outgoing": {"job_details": ""}
-  }
+    "outgoing": {
+      "job_details": null
+    },
+    "decorators": []
+  },
+  "groups": [],
+  "actor": "job",
+  "nodeLocation": { "x": 600, "y": 600 }
 }
 ```
 
-**Loop parallel** - run multiple child jobs simultaneously, one per `data_array` entry:
+**Critical fields that differ from normal tasks:**
+- **`actor` MUST be `"job"`** — not `"Pronghorn"` (which is used for all other tasks)
+- **`task` MUST be `""`** (empty string) — the engine auto-sets this to the task ID at runtime
+- **`outgoing.job_details` MUST be `null`** (or `""`) — do NOT override with `$var.job.X` or it silently breaks
+- **All incoming fields are required** — even unused ones must be present as empty strings: `"data_array": ""`, `"transformation": ""`, `"loopType": ""`
+- **`loopType`** values: `""` (no loop), `"parallel"`, or `"sequential"`
+
+**No loop** — run a single child job with variables:
 ```json
 {
   "incoming": {
     "task": "",
-    "workflow": "Test Array Concat",
-    "variables": {},
-    "data_array": [
-      {"arr": ["apple"], "arrayN": ["banana"]},
-      {"arr": ["kiwi"], "arrayN": ["cherry"]}
-    ],
+    "workflow": "My Child Workflow",
+    "variables": {
+      "deviceName": {"task": "job", "value": "deviceName"},
+      "configData": {"task": "a1b2", "value": "return_data"}
+    },
+    "data_array": "",
     "transformation": "",
-    "loopType": "parallel"
-  }
+    "loopType": ""
+  },
+  "outgoing": {"job_details": null}
 }
 ```
 
-**Loop sequential** - same as parallel but runs one iteration at a time:
+**Loop parallel** — run multiple child jobs simultaneously:
 ```json
 {
-  "loopType": "sequential"
+  "incoming": {
+    "task": "",
+    "workflow": "My Child Workflow",
+    "variables": {},
+    "data_array": "$var.6254.return_data",
+    "transformation": "",
+    "loopType": "parallel"
+  },
+  "outgoing": {"job_details": null}
+}
+```
+
+**Loop with transformation** — transform each `data_array` element before passing to child:
+```json
+{
+  "incoming": {
+    "task": "",
+    "workflow": "My Child Workflow",
+    "variables": {},
+    "data_array": "$var.6254.return_data",
+    "transformation": "62955855e2dff7146fb1c269",
+    "loopType": "parallel"
+  },
+  "outgoing": {"job_details": null}
 }
 ```
 
 **childJob variable passing:**
-- `{"task": "static", "value": [...]}` - pass a static/literal value to the child job
-- `{"task": "job", "value": "varName"}` - pass a parent job variable (must exist at start time)
-- `{"task": "taskId", "value": "outVar"}` - pass a previous task's output variable (preferred for runtime-produced data)
+- `{"task": "static", "value": [...]}` — literal value passed directly to child
+- `{"task": "job", "value": "varName"}` — parent job variable (must exist at start time)
+- `{"task": "taskId", "value": "outVar"}` — previous task's output (preferred for runtime-produced data)
 - When using `data_array`, each object in the array becomes the child job's variables for that iteration. The `variables` field should be `{}`.
-- **Prefer `{"task": "taskId"}` over `{"task": "job"}` for runtime data** - job variables referenced with `{"task": "job"}` must exist when the job starts, causing errors if they're populated later. Task references resolve at execution time.
-- **Never use `{"task": "static", "value": ["placeholder"]}` as a stand-in** — the literal `["placeholder"]` persists at runtime. If you need to pass an array from the parent job, use `{"task": "job", "value": "varName"}` where the parent provides the actual array.
-
-**childJob key fields:**
-- `actor` must be `"job"` (not `"Pronghorn"`)
-- `workflow` is the workflow name as a plain string (not double-quoted)
-- Empty optional fields use `""` (empty string)
-- `loopType`: `""` (no loop), `"parallel"`, or `"sequential"`
+- **Prefer `{"task": "taskId"}` over `{"task": "job"}` for runtime data** — job variables referenced with `{"task": "job"}` must exist when the job starts. Task references resolve at execution time.
+- **Never use `{"task": "static", "value": ["placeholder"]}` as a stand-in** — the literal `["placeholder"]` persists at runtime. Use `{"task": "job", "value": "varName"}` instead.
+- The engine auto-injects `childJobLoopIndex` into each loop iteration's variables.
 
 **Dynamic data_array with newVariable:**
 
@@ -1036,7 +1143,7 @@ Use `newVariable` to build the child loop data at runtime, then reference it wit
           "transformation": "",
           "loopType": "sequential"
         },
-        "outgoing": {"job_details": "$var.job.childResults"}
+        "outgoing": {"job_details": null}
       },
       "actor": "job"
     }
@@ -1044,9 +1151,11 @@ Use `newVariable` to build the child loop data at runtime, then reference it wit
 }
 ```
 
-**childJob output (`job_details`):**
+**childJob output (`job_details`) — CRITICAL: flat object, not full job document:**
 
-No loop - returns the child job's full variables:
+`job_details` contains **only the child workflow's outputSchema variables as a flat object**. It does NOT contain the full job document. Query paths use the variable name directly.
+
+No loop — flat spread of child's output variables:
 ```json
 {
   "status": "complete",
@@ -1056,7 +1165,7 @@ No loop - returns the child job's full variables:
 }
 ```
 
-With loop - returns `status` + `loop` array, one entry per iteration:
+With loop — `status` + `loop` array, each entry is a flat spread of that iteration's variables:
 ```json
 {
   "status": "complete",
@@ -1066,6 +1175,22 @@ With loop - returns `status` + `loop` array, one entry per iteration:
     {"status": "complete", "childJobLoopIndex": 2, "result": ["router1", "router2", "router3", "router4"]}
   ]
 }
+```
+
+**Querying childJob output — use flat variable names, NOT nested paths:**
+```json
+{
+  "name": "query",
+  "variables": {
+    "incoming": {
+      "query": "validateStatus",
+      "obj": "$var.f48f.job_details",
+      "pass_on_null": false
+    }
+  }
+}
+```
+The query path is `"validateStatus"`, NOT `"variables.job.validateStatus"`. For loop output, use `"[**].healthCheckArray"` to extract a field from all loop iterations.
 ```
 
 ### forEach Task Pattern
@@ -1321,18 +1446,85 @@ The childJob output has structure `{status, loop: [{...child vars...}, ...]}`. P
 
 ## Workflow Tips
 
-**General gotchas:**
-- **`makeData` `<!var!>` names must match source object keys exactly** - if the source has `ipaddress`, use `<!ipaddress!>` not `<!ip!>`
-- **`$var` references don't resolve inside object values** - `newVariable` with `{"key": "$var.job.x"}` stores the literal string, not the resolved value. Always pass data between tasks using `$var.job.x` directly in the task's incoming variable wiring.
-- **Every task that can fail needs error handling** - tasks without error/failure transitions cause the job to get stuck in `running` state forever. Use the try-catch pattern (see Error Handling section).
-- **Validate assets exist before running** - missing templates, devices, or adapters cause runtime errors. Check all referenced assets on the target platform first.
-- **Runtime-populated variables in childJob** - don't create dummy job variables for data produced at runtime. Instead, wire the childJob's `variables` to reference the **task that produces the value** using `{"task": "taskId", "value": "outgoingVar"}`. For example, if a query task `a150` extracts a `changeId`, reference it as `{"task": "a150", "value": "return_data"}` in the childJob, not `{"task": "job", "value": "changeId"}`.
+### $var Resolution Rules (Source-Code Verified)
 
-- **Reuse the same task type** - You can use the same task multiple times with different task IDs (e.g., two `WorkFlowEngine.query` tasks with IDs `c3d4` and `g7h8` doing different queries)
-- **Use JSON files for API payloads** - Write request bodies to `.json` files and use `curl -d @file.json` to avoid shell escaping issues with `$var` references and nested quotes
-- **Check the `errors` array** - Workflow creation succeeds even with validation errors. Zero errors = all tasks exist on the platform. `"Method not found"` means the task name doesn't match any method on that app.
-- **Template names** - Use underscores or simple characters in template names (e.g., `IOS_Switchport_Config`). The `name` field is used by `TemplateBuilder.renderJinjaTemplate` to look up the template at runtime.
-- **Variable syntax differs by context** - don't mix them up:
+Task IDs are generated as **4-character hex strings** (`[0-9a-f]{4}`, range `0000`-`ffff`). The engine validates `$var` references against this regex:
+
+```
+taskIdRegex = /^([0-9a-f]{1,4}|workflow_start|workflow_end)$/
+```
+
+**If a task ID contains non-hex characters, `$var` references to it silently fail** — the string is classified as `type: "static"` and stored literally, never resolved at runtime.
+
+| $var Pattern | Resolves? | Why |
+|---|---|---|
+| `$var.job.deviceName` | Yes | `job` is a recognized keyword |
+| `$var.a1b2.result` | Yes | `a1b2` is valid hex |
+| `$var.ff09.return_data` | Yes | `ff09` is valid hex |
+| `$var.apush.result` | **NO** | `p`, `u`, `s`, `h` are not hex chars |
+| `$var.myTask.output` | **NO** | `m`, `y`, `T`, `k` are not hex chars |
+
+**$var only resolves at the top level of `incoming` variables.** The engine iterates `Object.values(incoming)` and only resolves direct string values. It does NOT recurse into nested objects:
+
+| Wiring | Works? | Why |
+|---|---|---|
+| `"deviceName": "$var.job.x"` | Yes | Direct top-level string value |
+| `"variables": {"key": "$var.job.x"}` | **NO** | Nested inside an object — stored as literal string |
+| `"body": {"data": "$var.job.x"}` | **NO** | Same — nested object, never resolved |
+
+**Workaround for nested objects:** Use a `merge` or `query` intermediate task (with a hex ID) to build the object, then reference that task's output.
+
+### Adapter URI Prefix
+
+Adapters have a `base_path` configured in their adapter settings (e.g., `/api` for ServiceNow, NetBox). The `genericAdapterRequest` task **automatically prepends** this base_path to the `uriPath` you provide.
+
+The task schema says: *"do not include the host, port, base path or version"*
+
+| What you want to call | Correct `uriPath` | Wrong `uriPath` | Result of wrong |
+|---|---|---|---|
+| `https://snow.example.com/api/now/table/change_request` | `/now/table/change_request` | `/api/now/table/change_request` | `/api/api/now/table/...` → 400 error |
+
+If you need to bypass the base_path prepend, use `genericAdapterRequestNoBasePath` instead.
+
+### API Response Shapes
+
+Most platform API responses are wrapped in `{message, data, metadata}`. Always extract from `data`:
+
+| Endpoint | Extract |
+|---|---|
+| `POST /operations-manager/jobs/start` | `response.data._id` (job ID) |
+| `GET /operations-manager/jobs/{id}` | `response.data.status`, `response.data.variables`, `response.data.error` |
+| `POST /automation-studio/projects` | `response.data._id` |
+| `GET /automation-studio/projects` | `response.data` (array of projects) |
+| `DELETE /automation-studio/projects/{id}` | `response.message` |
+| `POST /automation-studio/automations` | `response.data._id` |
+
+**Exception:** `GET /automation-studio/workflows` returns `{items, skip, limit, total}` — NO `data` wrapper.
+
+**Exception:** `GET /automation-studio/workflows/detailed/{name}` returns the workflow document directly — NO wrapper.
+
+### Template Discovery Gotcha
+
+`GET /automation-studio/templates` may return TextFSM templates alongside Jinja2 templates. TextFSM content can contain control characters that break `jq` parsing. Use Python with a control-character strip if you need to parse template listings:
+```python
+import re, json
+raw = open("templates.json").read()
+clean = re.sub(r'[\x00-\x08\x0b\x0c\x0e-\x1f]', '', raw)
+templates = json.loads(clean)
+```
+
+**General gotchas:**
+- **`makeData` `<!var!>` names must match source object keys exactly** — if the source has `ipaddress`, use `<!ipaddress!>` not `<!ip!>`
+- **`$var` references don't resolve inside object values** — `newVariable` with `{"key": "$var.job.x"}` stores the literal string, not the resolved value. Always pass data between tasks using `$var.job.x` directly in the task's incoming variable wiring. Use a `merge` task to build nested objects dynamically.
+- **Every task that can fail needs error handling** — tasks without error/failure transitions cause the job to get stuck in `running` state forever. Use the try-catch pattern (see Error Handling section).
+- **Validate assets exist before running** — missing templates, devices, or adapters cause runtime errors. Check all referenced assets on the target platform first.
+- **Runtime-populated variables in childJob** — don't create dummy job variables for data produced at runtime. Instead, wire the childJob's `variables` to reference the **task that produces the value** using `{"task": "taskId", "value": "outgoingVar"}`. For example, if a query task `a150` extracts a `changeId`, reference it as `{"task": "a150", "value": "return_data"}` in the childJob, not `{"task": "job", "value": "changeId"}`.
+
+- **Reuse the same task type** — You can use the same task multiple times with different task IDs (e.g., two `WorkFlowEngine.query` tasks with IDs `c3d4` and `e5f6` doing different queries). Task IDs must be hex only.
+- **Use JSON files for API payloads** — Write request bodies to `.json` files and use `curl -d @file.json` to avoid shell escaping issues with `$var` references and nested quotes
+- **Check the `errors` array** — Workflow creation succeeds even with validation errors. Zero errors = all tasks exist on the platform. `"Method not found"` means the task name doesn't match any method on that app.
+- **Template names** — Use underscores or simple characters in template names (e.g., `IOS_Switchport_Config`). The `name` field is used by `TemplateBuilder.renderJinjaTemplate` to look up the template at runtime.
+- **Variable syntax differs by context** — don't mix them up:
 
 | Context | Syntax | Example |
 |---------|--------|---------|
@@ -1341,6 +1533,37 @@ The childJob output has structure `{status, loop: [{...child vars...}, ...]}`. P
 | `makeData` input | `<!var!>` | `{"name": "<!name!>", "ip": "<!ipaddress!>"}` |
 | Workflow variable refs | `$var.job.x` or `$var.taskId.x` | `$var.job.deviceName` |
 | childJob/merge refs | `{"task":"job","value":"varName"}` | `{"task": "static", "value": ["a"]}` |
+
+### Project Reference Gotcha — Create Project First
+
+**When moving/copying workflows into a project, internal references break:**
+
+1. Workflow names get re-prefixed: `@OLD_PROJECT_ID: Workflow Name` → `@NEW_PROJECT_ID: Workflow Name`
+2. Workflow `_id` changes (new UUID assigned)
+3. **Internal references are NOT updated** — childJob `workflow` fields, template `name` references, and transformation `tr_id` fields still point to old names/IDs
+
+**Example of the problem:**
+- Parent workflow in new project references `@66f47bc8: Bulk Delete Policy` (old project prefix)
+- Child workflow now lives at `@683049e2: Bulk Delete Policy` (new project prefix)
+- The childJob reference is stale — works only if old project still exists
+
+**Safe pattern: always create the project first, then create all workflows inside it.**
+- Workflow names automatically get the `@PROJECT_ID:` prefix
+- All cross-references (childJob, templates, transformations) use the correct project-prefixed names from the start
+- Use `mode: "copy"` (not `"move"`) if you must add existing assets — this preserves the originals
+
+### Project Component Types
+
+Valid `type` values for `POST /automation-studio/projects/{id}/components/add`:
+
+| Type | Asset |
+|------|-------|
+| `workflow` | Workflows |
+| `template` | Jinja2 / TextFSM templates |
+| `transformation` | JST transformations |
+| `jsonForm` | JSON forms |
+| `mopCommandTemplate` | MOP command templates (**not** `mop`) |
+| `mopAnalyticTemplate` | MOP analytic templates |
 
 ## Security & Access Control
 
