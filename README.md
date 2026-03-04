@@ -5,13 +5,15 @@ Skills and specs that enable an AI agent (Claude Code) to help engineers build a
 ## What's Here
 
 ```
-.claude/skills/              Claude Code slash commands (8 skills)
+.claude/skills/              Claude Code slash commands (10 skills)
   itential-setup/            Entry point: auth, bootstrap, route
   itential-studio/           Workflow/template/project CRUD, task palette
   itential-workflow-engine/  Run jobs, utility tasks, $var, patterns, debugging
   itential-mop/              Command templates, eval types, analytic templates
   itential-devices/          Devices, backups, diffs, device groups
   itential-golden-config/    Golden config, compliance, grading, remediation
+  itential-inventory/        Device inventories, nodes, actions, tags (IAG5)
+  itential-lcm/              Resource models, instances, lifecycle actions
   iag/                       Automation Gateway: iagctl + workflow integration
   solution-design/           Spec-driven: discover → design → build
 
@@ -41,7 +43,7 @@ cd itential-skills
 claude
 ```
 
-Claude Code automatically loads `CLAUDE.md` and the 8 skills.
+Claude Code automatically loads `CLAUDE.md` and the 10 skills.
 
 ### Connect to Your Platform
 
@@ -103,6 +105,8 @@ See `docs/developer-flow.md` for the full process diagram.
 | `/itential-devices` | List devices, backup configs, diff configs, manage device groups, apply templates. |
 | `/itential-golden-config` | Create golden config trees, config specs, compliance plans. Run compliance, grade, remediate. |
 | `/iag` | Build IAG services (Python, Ansible, OpenTofu) with iagctl. Call them from workflows via GatewayManager. |
+| `/itential-inventory` | Manage device inventories, nodes, actions, and tags. Required for IAG5 integration. |
+| `/itential-lcm` | Define resource models with schemas and actions. Manage instances, run lifecycle actions, track execution history. |
 | `/solution-design` | Entered from setup. Two approval gates: spec review → design review → build. |
 
 ## Spec Files
@@ -173,4 +177,5 @@ JSON/YAML templates in `helpers/` — always start from these when creating asse
 | `create-compliance-plan.json` | Compliance plan |
 | `run-compliance-plan.json` | Run compliance plan |
 | `run-compliance.json` | Run compliance directly |
+| `lcm-action-workflow.json` | LCM action workflow (must output `instance` variable) |
 | `helpers/iag/` | IAG service examples (Python, Ansible, OpenTofu, multi-service) |

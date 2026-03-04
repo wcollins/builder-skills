@@ -15,6 +15,8 @@ Each skill owns a domain. **Invoke the skill using the Skill tool before working
 | `/itential-devices` | Device operations | List devices, get configs, backup, diff, device groups, apply templates. |
 | `/itential-golden-config` | Compliance | Golden config trees, config specs, compliance plans, grading, remediation. |
 | `/iag` | Automation Gateway | Build IAG services (iagctl), call them from workflows (GatewayManager.runService). |
+| `/itential-inventory` | Inventory management | Device inventories, nodes, actions, tags. Required for IAG5. |
+| `/itential-lcm` | Lifecycle management | Resource models, instances, actions, execution history. Service lifecycle. |
 | `/solution-design` | Spec-driven delivery | Entered from setup. Fork spec, design, refine, plan, build. |
 
 ### User Flow
@@ -179,3 +181,4 @@ Helper templates are in `helpers/`:
 | `import-project.json` | Import a project |
 | `update-project-members.json` | Update project membership |
 | `add-devices-to-node.json` | Assign devices to a golden config node |
+| `lcm-action-workflow.json` | LCM action workflow (must output `instance` variable) |
