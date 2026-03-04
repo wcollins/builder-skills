@@ -5,11 +5,13 @@ Skills and specs that enable an AI agent (Claude Code) to help engineers build a
 ## What's Here
 
 ```
-.claude/skills/              Claude Code slash commands
+.claude/skills/              Claude Code slash commands (8 skills)
   itential-setup/            Entry point: auth, bootstrap, route
-  itential-studio/           Workflows, templates, adapters, projects
+  itential-studio/           Workflow/template/project CRUD, task palette
+  itential-workflow-engine/  Run jobs, utility tasks, $var, patterns, debugging
+  itential-mop/              Command templates, eval types, analytic templates
   itential-devices/          Devices, backups, diffs, device groups
-  itential-golden-config/    Golden config, compliance, remediation
+  itential-golden-config/    Golden config, compliance, grading, remediation
   iag/                       Automation Gateway: iagctl + workflow integration
   solution-design/           Spec-driven: discover → design → build
 
@@ -18,7 +20,7 @@ environments/                Pre-configured platform credentials
   cloud-lab.env              Cloud OAuth template
   staging.env                Staging OAuth template
 
-helpers/                     JSON templates + bootstrap script
+helpers/                     JSON/YAML templates + bootstrap script
 spec-files/                  21 technology-agnostic HLD use-case specs
 docs/                        Architecture diagrams
 CLAUDE.md                    Agent instructions (auto-loaded by Claude Code)
@@ -39,7 +41,7 @@ cd itential-skills
 claude
 ```
 
-Claude Code automatically loads `CLAUDE.md` and the 5 skills.
+Claude Code automatically loads `CLAUDE.md` and the 8 skills.
 
 ### Connect to Your Platform
 
@@ -95,7 +97,9 @@ See `docs/developer-flow.md` for the full process diagram.
 | Skill | What It Does |
 |-------|-------------|
 | `/itential-setup` | **Start here.** Auth (from env file or interactive), bootstrap, route to spec-based or freestyle. |
-| `/itential-studio` | Build workflows, Jinja2/TextFSM templates, command templates, projects. Run and test jobs. |
+| `/itential-studio` | Create workflows, Jinja2/TextFSM templates, projects. Discover tasks from the palette and get schemas. |
+| `/itential-workflow-engine` | Run and test workflows. Utility tasks (query, merge, evaluation, childJob, forEach). $var resolution, patterns, debugging. |
+| `/itential-mop` | Build command templates with validation rules. Run CLI checks against devices. Analytic templates for pre/post comparison. |
 | `/itential-devices` | List devices, backup configs, diff configs, manage device groups, apply templates. |
 | `/itential-golden-config` | Create golden config trees, config specs, compliance plans. Run compliance, grade, remediate. |
 | `/iag` | Build IAG services (Python, Ansible, OpenTofu) with iagctl. Call them from workflows via GatewayManager. |
@@ -145,9 +149,28 @@ Copy to your use-case directory: `cp environments/local-dev.env my-use-case/.env
 
 ## Helpers
 
-JSON templates in `helpers/` — always start from these when creating assets:
+JSON/YAML templates in `helpers/` — always start from these when creating assets:
 
-- `bootstrap.sh` — bootstraps a use-case working directory
-- `create-workflow.json`, `create-command-template.json`, `create-template-jinja2.json` — asset creation
-- `workflow-task-application.json`, `workflow-task-adapter.json` — task templates for workflows
-- `create-project.json`, `add-components-to-project.json` — project packaging
+| File | Purpose |
+|------|---------|
+| `bootstrap.sh` | Bootstrap a use-case working directory with task catalog, adapters, apps |
+| `create-workflow.json` | Workflow scaffold with start/end tasks |
+| `workflow-task-adapter.json` | Adapter task template for workflows |
+| `workflow-task-application.json` | Application task template for workflows |
+| `workflow-task-childjob.json` | childJob task template (actor: "job", correct variable syntax) |
+| `create-command-template.json` | Command template with validation rules |
+| `update-command-template.json` | Update command template (full replacement) |
+| `create-template-jinja2.json` | Jinja2 template for config generation |
+| `create-template-textfsm.json` | TextFSM template for output parsing |
+| `create-project.json` | Project creation |
+| `add-components-to-project.json` | Add assets to project (with move warning) |
+| `import-project.json` | Import a project |
+| `update-project-members.json` | Update project membership |
+| `create-golden-config-tree.json` | Golden config tree |
+| `create-golden-config-node.json` | Child node |
+| `update-node-config.json` | Node template with full syntax reference |
+| `add-devices-to-node.json` | Assign devices to a node |
+| `create-compliance-plan.json` | Compliance plan |
+| `run-compliance-plan.json` | Run compliance plan |
+| `run-compliance.json` | Run compliance directly |
+| `helpers/iag/` | IAG service examples (Python, Ansible, OpenTofu, multi-service) |

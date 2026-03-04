@@ -134,7 +134,7 @@ When something fails: check `job.status`, check `job.error` array, look at `IAPe
 
 1. **Never invent task names** — always look them up from `tasks/list`
 2. **Always get the schema before building** — `multipleTaskDetails?dereferenceSchemas=true`
-3. **Adapter `app` field comes from `apps/list`**, not `tasks/list` (casing differs)
+3. **Adapter `app` field comes from `apps/list`**, not `tasks/list` (names can be completely different, not just casing). Resolve from bootstrapped `apps.json` and `adapters.json`. When multiple adapter apps exist for the same product, ask the user.
 4. **Test each piece individually** before composing into a larger workflow
 5. **Check `job.error` for failures**, not just task status
 6. **Variable syntax differs by context:**
@@ -143,11 +143,11 @@ When something fails: check `job.status`, check `job.error` array, look at `IAPe
    - Workflow wiring: `$var.job.x`
    - childJob/merge refs: `{"task": "job", "value": "varName"}`
 7. **Validation errors = draft workflow** that cannot be started
-8. **`$var` references don't resolve inside object values** (e.g., inside `newVariable` value) — use a merge task to build objects from resolved values
+8. **`$var` references don't resolve inside object values** (e.g., inside `newVariable` value or adapter `body`) — use `merge`, `makeData`, `query`, or other utility tasks to build the object, then pass it as a top-level `$var` reference
 9. **Task IDs are hex-only** — `[0-9a-f]{1,4}`. Non-hex IDs (e.g., `apush`) cause `$var` references to silently fail (classified as static, never resolved)
 10. **`genericAdapterRequest` prepends the adapter's `base_path`** to `uriPath` — don't include `/api/v1` in `uriPath`. Use `genericAdapterRequestNoBasePath` if you need the full path
 11. **Create projects first, then build inside them** — moving/copying assets into a project re-prefixes names and changes `_id` but does NOT update internal references (childJob workflow refs, template names, transformation IDs)
-12. **API response shapes vary** — most POST/GET return `{message, data, metadata}`, but `GET /automation-studio/workflows` returns `{items, skip, limit, total}`. Always check the response shape before parsing
+12. **API response shapes vary** — projects use `{message, data, metadata}`, but workflow and template lists use `{items, skip, limit, total}`, and create endpoints return `{created, edit}`. Always check the response shape before parsing
 13. **Project component types** — valid values: `workflow`, `template`, `transformation`, `jsonForm`, `mopCommandTemplate`, `mopAnalyticTemplate`
 14. **Use skills, don't reimplement** — each skill owns its domain
 15. **When unsure about ANY endpoint, method, or payload — check `openapi.json` FIRST.** Run `jq '.paths["/the/endpoint"]' {use-case}/openapi.json` to see the method, request body schema, and response schema. Don't guess, don't try variations, don't make up field names — look it up. The spec is always right.
@@ -175,3 +175,7 @@ Helper templates are in `helpers/`:
 | `create-compliance-plan.json` | Compliance plan |
 | `run-compliance-plan.json` | Run compliance plan |
 | `run-compliance.json` | Run compliance directly |
+| `update-command-template.json` | Update command template (full replacement) |
+| `import-project.json` | Import a project |
+| `update-project-members.json` | Update project membership |
+| `add-devices-to-node.json` | Assign devices to a golden config node |
