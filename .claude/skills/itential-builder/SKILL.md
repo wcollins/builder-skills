@@ -234,6 +234,70 @@ data.error[].message.IAPerror.displayString → human-readable error
 
 **Step 4:** Fix locally, PUT to update, re-run. Don't recreate — updating preserves the ID.
 
+### Guide 2b: Work with any adapter task (discover → schema → test → wire)
+
+This is the general pattern for using any adapter task you haven't used before. Don't guess fields or response shapes — discover them.
+
+**Step 1: Find the task.**
+Search `tasks.json` for the adapter's tasks:
+```bash
+jq '.[] | select(.app | test("meraki";"i")) | {name, app, displayName}' {use-case}/tasks.json
+```
+This gives you the task `name` and `app` (but remember — `app` here may have wrong casing).
+
+**Step 2: Get the correct app name.**
+The `app` in tasks.json is often wrong for adapters. Look it up in `apps.json`:
+```bash
+jq '.[] | select(.name | test("meraki";"i")) | {name, type}' {use-case}/apps.json
+```
+Also get the adapter instance name from `adapters.json`:
+```bash
+jq '.results[] | select(.package_id | test("meraki";"i")) | {id, state}' {use-case}/adapters.json
+```
+Now you have three values: `app` (from apps.json), `adapter_id` (from adapters.json), `displayName` (from tasks.json).
+
+**Step 3: Get the task schema.**
+```
+POST /automation-studio/multipleTaskDetails?dereferenceSchemas=true
+{"inputsArray": [{"location": "Adapter", "pckg": "Meraki", "method": "getOrganizations"}]}
+```
+Use the `pckg` value from apps.json. The response tells you every incoming and outgoing variable with types. Save to `task-schemas.json`.
+
+**Step 4: Understand opaque schemas.**
+Many adapter schemas show `body: {type: "object"}` with no inner detail — the adapter validates internally. To discover required fields:
+1. Build a minimal test workflow: `workflow_start → adapter_task → workflow_end` (with error transition)
+2. Pass `body: {}` (empty object) via a merge task
+3. Run the job — the error message lists every required field: `"must have required property 'X'"`
+4. Add fields one at a time until the call succeeds
+
+**Step 5: Inspect the actual response.**
+Adapter responses are transformed — they **do not match** the native API's structure. Never assume the response shape. After a successful call:
+1. Get the job: `GET /operations-manager/jobs/{jobId}`
+2. Find the adapter task in `data.tasks` by its task ID
+3. Look at the task's outgoing variables — this is the actual response object
+4. Use `jq` to explore the structure: what keys exist, where the ID or status lives
+
+**Step 6: Wire the query path.**
+Now that you've seen the real response, wire a `query` task with the correct dot-path:
+```json
+{
+  "query": "response.result.sys_id",
+  "obj": "$var.b2b2.result"
+}
+```
+The path comes from what you saw in Step 5 — not from the native API docs, not from guessing.
+
+**Example — full sequence for a hypothetical adapter:**
+```
+1. tasks.json search → found "getDevice", app "networkAdapter"
+2. apps.json lookup → correct app is "NetworkAdapter" (capital N)
+3. adapters.json → adapter_id is "network-prod-1"
+4. multipleTaskDetails → incoming: {deviceId: string}, outgoing: {result: object}
+5. Test with known deviceId → job completes
+6. Inspect job → result is {"response": {"hostname": "...", "model": "...", "status": "active"}}
+7. Query path → "response.hostname" (not "result.hostname", not "data.hostname")
+```
+
 ### Guide 3: Add a task to an existing workflow
 
 **Step 1:** Read the helper template for the task type:
@@ -714,6 +778,8 @@ Extract nested values from objects using dot-path syntax.
   }
 }
 ```
+
+**IMPORTANT: Don't guess the query path for adapter responses.** Adapters transform upstream API responses — the field path in the adapter's output is NOT the same as the native API's response structure. Always inspect the actual task output from a test job before wiring the query path. See Guide 2b Step 5-6 for the discovery process.
 
 ### merge
 

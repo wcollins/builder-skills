@@ -1,0 +1,177 @@
+{
+  "automation": {
+    "name": "Demo - Merge MakeData ChildJob Query",
+    "description": "Demonstrates merge, makeData, childJob, and query utility tasks",
+    "type": "automation",
+    "canvasVersion": 3,
+    "encodingVersion": 1,
+    "font_size": 12,
+    "tasks": {
+      "workflow_start": {
+        "name": "workflow_start",
+        "groups": [],
+        "nodeLocation": { "x": 100, "y": 600 }
+      },
+      "a1a1": {
+        "name": "merge",
+        "canvasName": "merge",
+        "summary": "Build Template Variables",
+        "description": "Assembles deviceName and action into an object for makeData",
+        "location": "Application",
+        "locationType": null,
+        "app": "WorkFlowEngine",
+        "type": "operation",
+        "displayName": "WorkFlowEngine",
+        "variables": {
+          "incoming": {
+            "data_to_merge": [
+              {
+                "key": "deviceName",
+                "value": { "task": "job", "variable": "deviceName" }
+              },
+              {
+                "key": "action",
+                "value": { "task": "job", "variable": "action" }
+              }
+            ]
+          },
+          "outgoing": {
+            "merged_object": null
+          },
+          "error": "",
+          "decorators": []
+        },
+        "groups": [],
+        "actor": "Pronghorn",
+        "scheduled": false,
+        "nodeLocation": { "x": 400, "y": 600 }
+      },
+      "b2b2": {
+        "name": "makeData",
+        "canvasName": "makeData",
+        "summary": "Format Summary Message",
+        "description": "Builds a formatted summary string using merge output",
+        "location": "Application",
+        "locationType": null,
+        "app": "WorkFlowEngine",
+        "type": "operation",
+        "displayName": "WorkFlowEngine",
+        "variables": {
+          "incoming": {
+            "input": "Running action [<!action!>] on device [<!deviceName!>]",
+            "outputType": "string",
+            "variables": "$var.a1a1.merged_object"
+          },
+          "outgoing": {
+            "output": "$var.job.summaryMessage"
+          },
+          "error": "",
+          "decorators": []
+        },
+        "groups": [],
+        "actor": "Pronghorn",
+        "scheduled": false,
+        "nodeLocation": { "x": 700, "y": 600 }
+      },
+      "c3c3": {
+        "name": "childJob",
+        "canvasName": "childJob",
+        "summary": "Run Child Workflow",
+        "description": "Runs a child workflow passing deviceName and action",
+        "location": "Application",
+        "locationType": null,
+        "app": "WorkFlowEngine",
+        "type": "operation",
+        "displayName": "WorkFlowEngine",
+        "variables": {
+          "incoming": {
+            "task": "",
+            "workflow": "Child - Device Action",
+            "variables": {
+              "deviceName": { "task": "job", "value": "deviceName" },
+              "action": { "task": "job", "value": "action" }
+            },
+            "data_array": "",
+            "transformation": "",
+            "loopType": ""
+          },
+          "outgoing": {
+            "job_details": null
+          },
+          "error": "",
+          "decorators": []
+        },
+        "groups": [],
+        "actor": "job",
+        "scheduled": false,
+        "nodeLocation": { "x": 1000, "y": 600 }
+      },
+      "d4d4": {
+        "name": "query",
+        "canvasName": "query",
+        "summary": "Extract Child Status",
+        "description": "Extracts taskStatus from child job output",
+        "location": "Application",
+        "locationType": null,
+        "app": "WorkFlowEngine",
+        "type": "operation",
+        "displayName": "WorkFlowEngine",
+        "variables": {
+          "incoming": {
+            "pass_on_null": false,
+            "query": "taskStatus",
+            "obj": "$var.c3c3.job_details"
+          },
+          "outgoing": {
+            "return_data": "$var.job.childStatus"
+          },
+          "error": "",
+          "decorators": []
+        },
+        "groups": [],
+        "actor": "Pronghorn",
+        "scheduled": false,
+        "nodeLocation": { "x": 1300, "y": 600 }
+      },
+      "workflow_end": {
+        "name": "workflow_end",
+        "groups": [],
+        "nodeLocation": { "x": 1600, "y": 600 }
+      }
+    },
+    "transitions": {
+      "workflow_start": {
+        "a1a1": { "type": "standard", "state": "success" }
+      },
+      "a1a1": {
+        "b2b2": { "type": "standard", "state": "success" }
+      },
+      "b2b2": {
+        "c3c3": { "type": "standard", "state": "success" }
+      },
+      "c3c3": {
+        "d4d4": { "type": "standard", "state": "success" }
+      },
+      "d4d4": {
+        "workflow_end": { "type": "standard", "state": "success" }
+      },
+      "workflow_end": {}
+    },
+    "groups": [],
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "deviceName": { "title": "deviceName", "type": "string" },
+        "action": { "title": "action", "type": "string" }
+      },
+      "required": ["deviceName", "action"]
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "summaryMessage": { "title": "summaryMessage", "type": "string" },
+        "childStatus": { "title": "childStatus", "type": "string" }
+      }
+    }
+  }
+}
