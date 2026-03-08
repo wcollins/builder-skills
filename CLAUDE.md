@@ -16,6 +16,7 @@ Each skill owns a domain. **Invoke the skill using the Skill tool before working
 | `/iag` | Automation Gateway | Build IAG services (iagctl), call them from workflows (GatewayManager.runService). |
 | `/itential-inventory` | Inventory management | Device inventories, nodes, actions, tags. Required for IAG5. |
 | `/itential-lcm` | Lifecycle management | Resource models, instances, actions, execution history. Service lifecycle. |
+| `/flowagent` | AI Agents | Create agents, configure LLM providers, discover tools, run missions, track results. |
 
 ### User Flow
 

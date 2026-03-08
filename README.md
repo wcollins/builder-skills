@@ -5,7 +5,7 @@ Skills and specs that enable an AI agent (Claude Code) to help engineers build a
 ## What's Here
 
 ```
-.claude/skills/              Claude Code slash commands (11 skills)
+.claude/skills/              Claude Code slash commands (12 skills)
   itential-setup/            Entry point: auth, bootstrap, route
   itential-builder/          Build everything: projects, workflows, templates, MOP, utility tasks, $var, debugging
   itential-studio/           Workflow/template/project CRUD, task palette
@@ -15,6 +15,7 @@ Skills and specs that enable an AI agent (Claude Code) to help engineers build a
   itential-inventory/        Device inventories, nodes, actions, tags (IAG5)
   itential-lcm/              Resource models, instances, lifecycle actions
   iag/                       Automation Gateway: iagctl + workflow integration
+  flowagent/                 AI agents: LLM providers, tools, missions
   solution-design/           Spec-driven: discover → design → build
 
 environments/                Pre-configured platform credentials
@@ -108,6 +109,7 @@ See `docs/developer-flow.md` for the full process diagram.
 | `/iag` | Build IAG services (Python, Ansible, OpenTofu) with iagctl. Call them from workflows via GatewayManager. |
 | `/itential-inventory` | Manage device inventories, nodes, actions, and tags. Required for IAG5 integration. |
 | `/itential-lcm` | Define resource models with schemas and actions. Manage instances, run lifecycle actions, track execution history. |
+| `/flowagent` | Create and run AI agents on the platform. Configure LLM providers (Claude, OpenAI, Ollama), discover tools, run missions, debug. |
 | `/solution-design` | Entered from setup. Two approval gates: spec review → design review → build. |
 
 ## Spec Files
