@@ -155,7 +155,7 @@ All gotchas from the master branch are covered across the skillsv2 skill files. 
 |-------|-------------|--------------------------|-------------------------------|-----------------|
 | itential-builder | 10 | 8 | 2 | 30 |
 | itential-setup | 5 | 4 | 1 | 14 |
-| itential-workflow-engine | 6 | 5 | 1 | 15 |
+| itential-builder (runtime) | 6 | 5 | 1 | 15 |
 | itential-mop | 6 | 5 | 1 | 12 |
 | solution-design | 5 | 4 | 1 | 10 |
 | **Total** | **32** | **26** | **6** | **81** |

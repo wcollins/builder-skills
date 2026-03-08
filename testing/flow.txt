@@ -1,0 +1,200 @@
+ /itential-setup                                                                                                                                                                                                                                   
+
+⏺ Let me check for existing environment files and any previous setup.
+
+⏺ Searched for 2 patterns, read 3 files (ctrl+o to expand)
+
+⏺ I found three pre-configured environments:
+
+  ┌─────────────┬───────────────────────────────────────────┬───────────────────────────┐
+  │ Environment │                    URL                    │           Auth            │
+  ├─────────────┼───────────────────────────────────────────┼───────────────────────────┤
+  │ local-dev   │ http://localhost:4000                     │ password (admin/admin)    │
+  ├─────────────┼───────────────────────────────────────────┼───────────────────────────┤
+  │ cloud-lab   │ https://platform-6-aidev.se.itential.io   │ OAuth (needs credentials) │
+  ├─────────────┼───────────────────────────────────────────┼───────────────────────────┤
+  │ staging     │ https://your-staging-instance.itential.io │ OAuth (needs credentials) │
+  └─────────────┴───────────────────────────────────────────┴───────────────────────────┘
+
+  Which environment do you want to connect to? Or provide your own platform URL and credentials if none of these match.
+
+  Also — are you exploring or building from a spec?
+  - Exploring — browse adapters, devices, workflows, build freestyle
+  - Spec-based — pick a use-case spec and build it end-to-end
+
+❯ use localdev                                                                                                                                                                                                                                      
+
+⏺ Let me authenticate against the local dev instance.
+
+⏺ Bash(curl -s -X POST "http://localhost:4000/login" -H "Content-Type: application/json" -d '{"username":"admin","password":"admin"}' 2>&1)
+  ⎿  YzM2ZDg5ZTgxZTllMzdmYTk3NzJkNmQ5OWExNTk3MGI=
+
+⏺ Authenticated successfully. Token: YzM2ZDg5ZTgxZTllMzdmYTk3NzJkNmQ5OWExNTk3MGI=
+
+  Are you exploring or building from a spec?
+
+❯ spec                                                                                                                                                                                                                                              
+
+⏺ Let me show you the available specs.
+
+⏺ Searched for 1 pattern (ctrl+o to expand)
+
+⏺ Here are the available specs:
+
+  ┌────────────────┬─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
+  │    Category    │                                                                            Specs                                                                            │
+  ├────────────────┼─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+  │ Networking     │ Port Turn-Up, VLAN Provisioning, Circuit Provisioning, BGP Peer, VPN Tunnel, WAN Bandwidth                                                                  │
+  ├────────────────┼─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+  │ Operations     │ Software Upgrade, Config Backup & Compliance, Network Health Check, Device Onboarding, Device Decommissioning, Change Management, Incident Auto-Remediation │
+  ├────────────────┼─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+  │ Security       │ Firewall Rule Lifecycle, Cloud Security Groups, SSL Certificate Lifecycle                                                                                   │
+  ├────────────────┼─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+  │ Infrastructure │ DNS Record Management, IPAM Lifecycle, Load Balancer VIP, Config Drift Remediation, Network Compliance Audit                                                │
+  └────────────────┴─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
+
+  Which spec do you want to build? Pick one, or describe your use case and I'll recommend one.
+
+❯ Change Management                                                                                                                                                                                                                                 
+                    
+⏺ Let me set up the working directory and pull platform data.                                                                                                                                                                                       
+                                                                                                                                                                                                                                                    
+⏺ Read 1 file (ctrl+o to expand)                                                                                                                                                                                                                    
+                                         
+⏺ Bash(mkdir -p /Users/ankitrbhansali/aiprojects/newskills/itential-skills/change-management && cp /Users/ankitrbhansali/aiprojects/newskills/itential-skills/environme…)                                                                           
+  ⎿  Done                                                                                                                                                                                                                                           
+                                                                                                                                                                                                                                                    
+⏺ Now let me pull all platform data in parallel.                                                                                                                                                                                                    
+                                                                                                                                                                                                                                                    
+⏺ Bash(cp /Users/ankitrbhansali/aiprojects/newskills/itential-skills/spec-files/spec-change-management.md /Users/ankitrbhansali/aiprojects/newskills/itential-skills/ch…)                                                                           
+  ⎿  Done                                                                                                                                                                           
+                                                                                                                                                                                                                                                    
+⏺ Bash(TOKEN="YzM2ZDg5ZTgxZTllMzdmYTk3NzJkNmQ5OWExNTk3MGI=" && BASE="http://localhost:4000" && ENCODED_BASE=$(python3 -c "import urllib.parse; print(urllib.parse.quote…)                                                                           
+  ⎿  openapi:  1554561 bytes                                                                                                                                                                                                                        
+                                                                                                                                                                                                                                                    
+⏺ Bash(TOKEN="YzM2ZDg5ZTgxZTllMzdmYTk3NzJkNmQ5OWExNTk3MGI=" && BASE="http://localhost:4000" && curl -s "$BASE/workflow_builder/tasks/list?token=$TOKEN" > /Users/ankitr…)                                                                           
+  ⎿  tasks: 904 entries                                                                                                                                                                                                                             
+                                                                                                                                                                                                                                                    
+⏺ Bash(TOKEN="YzM2ZDg5ZTgxZTllMzdmYTk3NzJkNmQ5OWExNTk3MGI=" && BASE="http://localhost:4000" && curl -s "$BASE/automation-studio/apps/list?token=$TOKEN" > /Users/ankitr…)                                                                           
+  ⎿  apps: 24 entries                                                                                                                                                                                                                               
+                                                                                                                                                                                                                                                    
+⏺ Bash(TOKEN="YzM2ZDg5ZTgxZTllMzdmYTk3NzJkNmQ5OWExNTk3MGI=" && BASE="http://localhost:4000" && curl -s "$BASE/health/adapters?token=$TOKEN" > /Users/ankitrbhansali/aip…)                                                                           
+  ⎿  adapters:                                                                                                                                                                                                                                      
+     AutomationGateway — @itential/adapter-automation_gateway — state: RUNNING — conn: ONLINE                                                                                                                                                       
+     ServiceNow — @itentialopensource/adapter-servicenow — state: RUNNING — conn: ONLINE                                                                                                                                                            
+                                                                                                                                                                                                                                                    
+⏺ Bash(TOKEN="YzM2ZDg5ZTgxZTllMzdmYTk3NzJkNmQ5OWExNTk3MGI=" && BASE="http://localhost:4000" && curl -s "$BASE/health/applications?token=$TOKEN" > /Users/ankitrbhansali…)                                                                           
+  ⎿  parse error                                                                                                                                                                                                                                    
+                                                                                                                                                                                                                                                    
+⏺ Now let me pull additional environment data.                                                                                                                                                                                                      
+                                                                                                                                                                                                                                                    
+⏺ Bash(TOKEN="YzM2ZDg5ZTgxZTllMzdmYTk3NzJkNmQ5OWExNTk3MGI=" && BASE="http://localhost:4000" && curl -s -X POST "$BASE/configuration_manager/devices?token=$TOKEN" -H "C…)                                                                           
+  ⎿  Error: Exit code 3                                                                                                                                                                                                                             
+                                                                                                                                                                                                                                                    
+⏺ Bash(TOKEN="YzM2ZDg5ZTgxZTllMzdmYTk3NzJkNmQ5OWExNTk3MGI=" && BASE="http://localhost:4000" && curl -s "$BASE/automation-studio/workflows?limit=500&token=$TOKEN" > /Us…)                                                                           
+  ⎿  Cancelled: parallel tool call Bash(TOKEN="YzM2ZDg5ZTgxZTllMzdmYTk3NzJkNmQ5O…) errored                                                                                                                                                          
+                                                                                                                                                                                                                                                    
+⏺ Bash(TOKEN="YzM2ZDg5ZTgxZTllMzdmYTk3NzJkNmQ5OWExNTk3MGI=" && BASE="http://localhost:4000" && curl -s "$BASE/configuration_manager/deviceGroups?token=$TOKEN" > /Users…)                                                                           
+  ⎿  Cancelled: parallel tool call Bash(TOKEN="YzM2ZDg5ZTgxZTllMzdmYTk3NzJkNmQ5O…) errored                                                                                                                                                          
+                                                                                                                                                                                                                                                    
+⏺ Read 1 file (ctrl+o to expand)                                                                                                                                                                                                                    
+                                                                                                                                                                                                                                                    
+⏺ Looks like the devices endpoint may not be available. Let me check what happened and retry the other calls.                                                                                                                                       
+                                                                                                                                                                                                                                                    
+⏺ Bash(TOKEN="YzM2ZDg5ZTgxZTllMzdmYTk3NzJkNmQ5OWExNTk3MGI=" && BASE="http://localhost:4000" && curl -s -X POST "$BASE/configuration_manager/devices?token=$TOKEN" -H "C…)                                                                           
+  ⎿  (No output)                                                                                                                                                                                                                                    
+                                                                                                                                                                                                                                                    
+⏺ Bash(TOKEN="YzM2ZDg5ZTgxZTllMzdmYTk3NzJkNmQ5OWExNTk3MGI=" && BASE="http://localhost:4000" && curl -s "$BASE/automation-studio/workflows?limit=500&token=$TOKEN" 2>&1…)                                                                            
+  ⎿  Error: Exit code 3                                                                                                                                                                                                                             
+                                                                                                                                                                                                                                                    
+⏺ Read 2 files (ctrl+o to expand)                                                                                                                                                                                                                   
+                                                                                                                                                                                                                                                    
+⏺ Bash(TOKEN="YzM2ZDg5ZTgxZTllMzdmYTk3NzJkNmQ5OWExNTk3MGI=" && curl -s "http://localhost:4000/automation-studio/workflows?limit=500&token=$TOKEN" | jq '.items | length…)                                                                           
+  ⎿  Error: Exit code 5                                                                                                                                                                                                                             
+                                                                                                                                                                                                                                                    
+⏺ Read 1 file (ctrl+o to expand)                                                                                                                                                                                                                    
+                                                                                                                                                                                                                                                    
+⏺ Bash(curl -s -w "\nHTTP_CODE:%{http_code}" "http://localhost:4000/health/adapters?token=YzM2ZDg5ZTgxZTllMzdmYTk3NzJkNmQ5OWExNTk3MGI=" 2>&1 | tail -3)                                                                                             
+  ⎿  {                                                                                                                                                                                                                                              
+       "results": [                                                                                                                                                                                                                                 
+         {                                                                                                                                                                                                                                          
+     … +69 lines (ctrl+o to expand)                                                                                                                                                                                                                 
+                                                                                                                                                                                                                                                    
+⏺ Platform is up. Let me get the remaining data.                                                                                                                                                                                                  
+                                                                                                                                                                                                                                                    
+⏺ Bash(TOKEN="YzM2ZDg5ZTgxZTllMzdmYTk3NzJkNmQ5OWExNTk3MGI=" && curl -s "http://localhost:4000/automation-studio/workflows?limit=500&token=$TOKEN" > /Users/ankitrbhansa…)                                                                           
+  ⎿  100                                                                                                                                                                                                                                            
+                                                                                                                                                                                                                                                    
+⏺ Read 1 file (ctrl+o to expand)                                                                                                                                                                                                                    
+                                                                                                                                                                                                                                                    
+⏺ Bash(TOKEN="YzM2ZDg5ZTgxZTllMzdmYTk3NzJkNmQ5OWExNTk3MGI=" && curl -s -X POST "http://localhost:4000/configuration_manager/devices?token=$TOKEN" -H "Content-Type: app…)                                                                           
+  ⎿  Error: Exit code 5                                                                                                                                                                                                                             
+     jq: error (at /Users/ankitrbhansali/aiprojects/newskills/itential-skills/change-management/devices.json:0): Cannot index string with string "list"
+                                                                                                                                                                                                                                                    
+⏺ Read 1 file (ctrl+o to expand)                                                                                                                                                                                                                    
+                                                                                                                                                                                                                                                    
+⏺ No devices configured in Config Manager. That's fine — this use case is about orchestrating change windows, not directly managing device configs.                                                                                                 
+                                                                                                                                                                                                                                                    
+  Now let me review the spec against the environment. Here's what I found:                                                                                                                                                                          
+                                                                                                                                                                                                                                                    
+  ---                                                                                                                                                                                                                                               
+  Environment Summary                                                                                                                                                                                                                               
+                                                                                                                                                                                                                                                    
+  ┌───────────┬───────┬──────────────────────────────────────────────────────────────────────────────┐                                                                                                                                              
+  │ Resource  │ Count │                                   Details                                    │                                                                                                                                              
+  ├───────────┼───────┼──────────────────────────────────────────────────────────────────────────────┤                                                                                                                                              
+  │ Adapters  │ 2     │ AutomationGateway (ONLINE), ServiceNow (ONLINE)                              │                                                                                                                                              
+  ├───────────┼───────┼──────────────────────────────────────────────────────────────────────────────┤
+  │ Apps      │ 24    │ Includes Servicenow, GatewayManager, OperationsManager, WorkFlowEngine, etc. │
+  ├───────────┼───────┼──────────────────────────────────────────────────────────────────────────────┤
+  │ Tasks     │ 904   │ Full catalog available                                                       │
+  ├───────────┼───────┼──────────────────────────────────────────────────────────────────────────────┤
+  │ Workflows │ 100   │ Existing workflows to check for reuse                                        │
+  ├───────────┼───────┼──────────────────────────────────────────────────────────────────────────────┤
+  │ Devices   │ 0     │ No devices in Config Manager (not required for this use case)                │
+  └───────────┴───────┴──────────────────────────────────────────────────────────────────────────────┘
+
+  Spec Review Against Environment
+
+  ┌────────────────────────────────────┬────────────────────────────────────────────────────────────────┬───────────────┐
+  │          Spec Requirement          │                      Platform Capability                       │    Status     │
+  ├────────────────────────────────────┼────────────────────────────────────────────────────────────────┼───────────────┤
+  │ ITSM / Ticketing                   │ ServiceNow adapter — ONLINE                                    │ Available     │
+  ├────────────────────────────────────┼────────────────────────────────────────────────────────────────┼───────────────┤
+  │ Ticket create/update/close         │ ServiceNow adapter tasks                                       │ Available     │
+  ├────────────────────────────────────┼────────────────────────────────────────────────────────────────┼───────────────┤
+  │ Approval polling                   │ WorkFlowEngine (timer/loop tasks)                              │ Available     │
+  ├────────────────────────────────────┼────────────────────────────────────────────────────────────────┼───────────────┤
+  │ Monitoring suppression             │ No monitoring adapter installed (no SolarWinds, PRTG, Datadog) │ Not available │
+  ├────────────────────────────────────┼────────────────────────────────────────────────────────────────┼───────────────┤
+  │ Pluggable change execution         │ childJob task (call any workflow)                              │ Available     │
+  ├────────────────────────────────────┼────────────────────────────────────────────────────────────────┼───────────────┤
+  │ Post-change verification           │ childJob + comparison tasks                                    │ Available     │
+  ├────────────────────────────────────┼────────────────────────────────────────────────────────────────┼───────────────┤
+  │ Report/evidence generation         │ Template tasks (Jinja2)                                        │ Available     │
+  ├────────────────────────────────────┼────────────────────────────────────────────────────────────────┼───────────────┤
+  │ Error handling & conditional logic │ Evaluation tasks, error transitions                            │ Available     │
+  └────────────────────────────────────┴────────────────────────────────────────────────────────────────┴───────────────┘
+
+  Questions for You
+
+  The spec has discovery questions. Let me ask the critical ones given your environment:
+
+  1. Monitoring system — No monitoring adapter is installed. Options:
+    - Skip monitoring suppression/restore phases (simplify the workflow)
+    - Stub it out with placeholder tasks for future integration
+    - Use IAG (Automation Gateway is online) to call a monitoring API via custom script
+  2. ServiceNow ticket fields — What fields do you need on the change ticket? (or should I use standard ServiceNow change_request fields: short_description, description, category, priority, assignment_group, cmdb_ci?)
+  3. Approval mechanism — Is approval a status field on the ServiceNow change_request (e.g., state = "Approve"), or a separate approval record?
+  4. Pluggable change — What types of changes will this orchestrate? This determines the childJob inputs.
+  5. Rollback — Automatic on failure, or pause for engineer review?
+  6. Batch strategy — Single window, sequential, or rolling?
+
+✻ Cooked for 1m 12s
+
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────── ▪▪▪ ─
+❯  
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+  ? for shortcuts
+
+

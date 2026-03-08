@@ -5,11 +5,10 @@ Skills and specs that enable an AI agent (Claude Code) to help engineers build a
 ## What's Here
 
 ```
-.claude/skills/              Claude Code slash commands (12 skills)
+.claude/skills/              Claude Code slash commands (11 skills)
   itential-setup/            Entry point: auth, bootstrap, route
-  itential-builder/          Build everything: projects, workflows, templates, MOP
+  itential-builder/          Build everything: projects, workflows, templates, MOP, utility tasks, $var, debugging
   itential-studio/           Workflow/template/project CRUD, task palette
-  itential-workflow-engine/  Run jobs, utility tasks, $var, patterns, debugging
   itential-mop/              Command templates, eval types, analytic templates
   itential-devices/          Devices, backups, diffs, device groups
   itential-golden-config/    Golden config, compliance, grading, remediation
@@ -101,9 +100,8 @@ See `docs/developer-flow.md` for the full process diagram.
 | Skill | What It Does |
 |-------|-------------|
 | `/itential-setup` | **Start here.** Auth (from env file or interactive), bootstrap, route to spec-based or freestyle. |
-| `/itential-builder` | **Build everything.** Projects, workflows, templates (Jinja2/TextFSM), command templates (MOP). Wire tasks, run jobs, debug. Includes adapter discovery guide. |
+| `/itential-builder` | **Build everything.** Projects, workflows, templates (Jinja2/TextFSM), command templates (MOP). Wire utility tasks, run jobs, debug. $var resolution, workflow patterns, adapter discovery. |
 | `/itential-studio` | Create workflows, Jinja2/TextFSM templates, projects. Discover tasks from the palette and get schemas. |
-| `/itential-workflow-engine` | Run and test workflows. Utility tasks (query, merge, evaluation, childJob, forEach). $var resolution, patterns, debugging. |
 | `/itential-mop` | Build command templates with validation rules. Run CLI checks against devices. Analytic templates for pre/post comparison. |
 | `/itential-devices` | List devices, backup configs, diff configs, manage device groups, apply templates. |
 | `/itential-golden-config` | Create golden config trees, config specs, compliance plans. Run compliance, grade, remediate. |

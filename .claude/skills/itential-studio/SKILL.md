@@ -1,6 +1,6 @@
 ---
 name: itential-studio
-description: Create and manage Itential workflows, templates, and projects. Discover tasks from the palette and get schemas. For running workflows and utility tasks, use /itential-workflow-engine. For command templates, use /itential-mop.
+description: Create and manage Itential workflows, templates, and projects. Discover tasks from the palette and get schemas. For running workflows and utility tasks, use /itential-builder. For command templates, use /itential-mop.
 argument-hint: "[action or use-case]"
 ---
 
@@ -295,7 +295,7 @@ PATCH /automation-studio/projects/{projectId}
 
 Workflows are the core automation artifacts. Each workflow is a directed graph of tasks connected by transitions on a visual canvas.
 
-> **For running workflows, utility task patterns (childJob, forEach, evaluation), error handling, and $var resolution rules, invoke `/itential-workflow-engine`.**
+> **For running workflows, utility task patterns (childJob, forEach, evaluation), error handling, and $var resolution rules, invoke `/itential-builder`.**
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|

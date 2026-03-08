@@ -955,6 +955,47 @@ Array manipulation on job variables **by name** (plain string, NOT `$var` refere
 
 **GOTCHA:** Pass `"myArray"`, NOT `"$var.job.myArray"`.
 
+### deepmerge
+
+Same as `merge` but merges nested objects recursively instead of overwriting top-level keys. Use when combining objects that share nested keys.
+
+**Incoming:** `data_to_merge` (array, min 2 items — same format as merge)
+**Outgoing:** `merged_object` (object)
+
+### transformation
+
+Perform JSON transformation using JST (JSON Schema Transformation).
+
+**Incoming:** `tr_id` (string — transformation ID), `variableMap` (object — maps transformation inputs to data locations), `options` (object, optional — e.g., `{"extractOutput": true}`)
+**Outgoing:** `outgoing` (any)
+
+Used in childJob mode 3 (loop with transformation) to reshape each `data_array` element before passing to the child.
+
+### decision
+
+Multi-way branching based on conditions. Unlike `evaluation` (binary true/false), `decision` branches to different tasks based on multiple conditions.
+
+**Incoming:** `decisionArray` (array of decision objects with conditions and target task IDs)
+**Outgoing:** `return_value` (string — the ID of the next task)
+
+### restCall
+
+Make external HTTP calls from within a workflow. Use when calling APIs not exposed through adapters.
+
+### modify
+
+Modify data by querying into an object and replacing with a new value.
+
+**Incoming:** `object_to_update` (any), `query` (string — json-query path), `new_value` (any)
+**Outgoing:** `updated_object` (any)
+
+### validateJsonSchema
+
+Validate JSON data against a JSON schema.
+
+**Incoming:** `jsonData` (object), `schema` (object)
+**Outgoing:** `result` (object — `{"valid": true}` or `{"valid": false}`)
+
 ### Additional Utility Tasks (60+)
 
 Search `tasks.json` for the full catalog:
@@ -971,6 +1012,15 @@ jq '.[] | select(.app == "WorkFlowEngine") | {name, summary}' {use-case}/tasks.j
 | Tools | `restCall`, `csvStringToJson`, `excelToJson`, `asciiToBase64` |
 
 Fetch full schemas with `POST /automation-studio/multipleTaskDetails?dereferenceSchemas=true`.
+
+### Task Endpoint Patterns (Standalone Testing)
+
+Some tasks have standalone REST endpoints — **faster than creating test workflows:**
+- **WorkFlowEngine:** `POST /workflow_engine/{method}` (e.g., `/workflow_engine/query`) — requires `job_id` (use dummy ObjectId `"4321abcdef694aa79dae47ad"`)
+- **MOP:** `POST /mop/RunCommandTemplate` — test command templates directly
+- **TemplateBuilder:** `POST /template_builder/templates/{name}/renderJinja` with `{"context": {...}}` (note: `context`, not `variables`)
+
+Most utility tasks (array ops, string ops, forEach, childJob, merge) do NOT have standalone endpoints. Test those by creating a minimal `start → task → end` workflow and running via `jobs/start`.
 
 ---
 
@@ -1305,6 +1355,34 @@ Every adapter task needs both success and error transitions. Route errors to an 
   }
 }
 ```
+
+### autoApprove Pattern
+
+Use an `evaluation` task to conditionally skip manual approval:
+
+```
+evaluation (autoApprove == true?)
+  |-- success -> skip to next task (auto-approved)
+  |-- failure -> ViewData (human reviews and approves/rejects)
+```
+
+The workflow accepts an `autoApprove` boolean input. When `true`, skips the manual step. Useful for CI/CD pipelines that run unattended vs interactive operator sessions.
+
+### Revert Transitions (Retry Loops)
+
+Use `"type": "revert"` transitions to go backward for retry scenarios:
+
+```
+renderTemplate -> viewConfig (approve/reject)
+  |-- success -> pushConfig -> evalSuccess
+  |                             |-- success -> end
+  |                             |-- failure -> viewError (retry/abort)
+  |                                             |-- success (retry) --revert--> renderTemplate
+  |                                             |-- failure (abort) -> end
+  |-- failure (reject) --revert--> renderTemplate
+```
+
+The `revert` transition moves execution back to a previous task, allowing the user to fix inputs and retry.
 
 ### Modular Workflow Design
 

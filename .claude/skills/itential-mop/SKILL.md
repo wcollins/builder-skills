@@ -240,7 +240,7 @@ Use the `MOP.RunCommandTemplate` task. See `/itential-studio` for full workflow 
 - **`variables`** -- object with values for `<!variable!>` substitutions
 - **`devices`** -- array of device names to run against
 
-See `/itential-workflow-engine` for running the workflow via `POST /operations-manager/jobs/start`.
+See `/itential-builder` for running the workflow via `POST /operations-manager/jobs/start`.
 
 ### Ad-Hoc Commands (without a template)
 
@@ -458,7 +458,7 @@ After standalone testing passes:
 3. Wire incoming variables: `template`, `variables`, `devices` using `$var.job.*` references
 4. Wire outgoing: capture results in a variable like `mop_template_results`
 5. Add downstream logic to branch on `$var.taskName.result` (true/false)
-6. Use `/itential-workflow-engine` to run via `POST /operations-manager/jobs/start`
+6. Use `/itential-builder` to run via `POST /operations-manager/jobs/start`
 
 ### 3. Build an analytic template for pre/post comparison
 
