@@ -153,20 +153,32 @@ All gotchas from the master branch are covered across the skillsv2 skill files. 
 
 | Skill | Total Evals | Positive (should trigger) | Negative (should not trigger) | Total Assertions |
 |-------|-------------|--------------------------|-------------------------------|-----------------|
-| itential-builder | 10 | 8 | 2 | 30 |
+| itential-builder | 16 | 13 | 3 | 45 |
 | itential-setup | 5 | 4 | 1 | 14 |
-| itential-builder (runtime) | 6 | 5 | 1 | 15 |
 | itential-mop | 6 | 5 | 1 | 12 |
 | solution-design | 5 | 4 | 1 | 10 |
-| **Total** | **32** | **26** | **6** | **81** |
+| flowagent | 6 | 5 | 1 | 16 |
+| **Total** | **38** | **31** | **7** | **97** |
+
+Note: itential-workflow-engine was consolidated into itential-builder. Its 6 evals are now part of itential-builder.
+
+### E2E Integration Tests
+
+| Test | Platform | Assertions | Result |
+|------|----------|------------|--------|
+| Test 1: Utility chain (merge → makeData → query → evaluation) | Cloud | 5 | 5/5 PASS |
+| Test 2: childJob loop (parent → 3 children in parallel) | Cloud | 3 | 3/3 PASS |
+| Test 3: ServiceNow adapter (merge → create → error handler) | Cloud | 3 | 3/3 PASS |
+| Test 4: FlowAgent (create agent → call → check mission) | Local | 8 | 8/8 PASS |
+| **Total** | | **19** | **19/19 PASS** |
 
 ### Assertion Types
 
 | Type | Count | Description |
 |------|-------|-------------|
-| critical | 24 | Must pass — failure means the skill teaches wrong behavior |
-| structural | 50 | Should pass — correct patterns and structure |
-| negative | 7 | Skill should NOT trigger for unrelated prompts |
+| critical | 27 | Must pass — failure means the skill teaches wrong behavior |
+| structural | 62 | Should pass — correct patterns and structure |
+| negative | 8 | Skill should NOT trigger for unrelated prompts |
 
 ---
 
@@ -221,6 +233,11 @@ The eval framework will:
 
 **Coverage: 58/58 gotchas documented (100%)**
 **Eval coverage: 38/58 gotchas tested (66%)**
-**Critical gotchas tested: 24/24 (100%)**
+**Critical gotchas tested: 27/27 (100%)**
+**E2E integration tests: 19/19 PASS (100%)**
 
-All critical gotchas that cause silent failures, stuck jobs, or wrong behavior have dedicated eval assertions. The remaining 20 are documentation-level items covered in the skill text but not individually tested. No gaps require new skill content.
+All critical gotchas that cause silent failures, stuck jobs, or wrong behavior have dedicated eval assertions. The remaining 20 are documentation-level items covered in the skill text but not individually tested.
+
+**Skills consolidated:** `itential-workflow-engine` merged into `itential-builder`. `flowagent` added as new skill with 6 eval cases and 8 e2e assertions.
+
+**Auth persistence added:** `.auth.json` pattern ensures authenticate-once, reuse-everywhere across all skills.

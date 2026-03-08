@@ -45,6 +45,16 @@ Each skill owns a domain. **Invoke the skill using the Skill tool before working
 
 **IMPORTANT: Invoke skills using the Skill tool** — don't just reference them in text. When you need to build workflows/templates, invoke `/itential-builder`. When you need to work with devices, invoke `/itential-devices`. The skills contain the API details you need. Without loading them, you're guessing.
 
+### Auth Reuse — Authenticate Once, Reuse Everywhere
+
+**After `/itential-setup` authenticates, the token is saved to `{use-case}/.auth.json`.** Every other skill should:
+1. Read `{use-case}/.auth.json` for `platform_url`, `auth_method`, and `token`
+2. Use the token for all API calls (Bearer header for OAuth, query param for local)
+3. On auth error (401/403): re-authenticate using `{use-case}/.env` and update `.auth.json`
+4. **Never ask the user for credentials if `.env` exists**
+
+This means the user authenticates once and every subsequent skill just works.
+
 ### Key Rule: Look Up Before You Act — Don't Guess
 
 **Skills** teach patterns, workflows, and know-how (how to build a childJob, how to wire variables, how to test).

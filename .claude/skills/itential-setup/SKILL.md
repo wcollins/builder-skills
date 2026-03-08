@@ -86,9 +86,44 @@ GET /health/adapters
 Authorization: Bearer eyJhbG...
 ```
 
+### Token Persistence
+
+**After successful authentication, save the token locally so all skills can reuse it:**
+
+```bash
+# After login/oauth, write auth details to the use-case directory
+cat > {use-case}/.auth.json << EOF
+{
+  "platform_url": "https://platform.example.com",
+  "auth_method": "oauth",
+  "token": "eyJhbG...",
+  "timestamp": "2026-03-08T10:00:00Z"
+}
+EOF
+```
+
+**Every skill should check for `.auth.json` before making API calls:**
+1. Check `{use-case}/.auth.json` — if it exists, read the token and platform URL
+2. Make the API call with the stored token
+3. If the call returns an auth error (401/403), re-authenticate using `.env` credentials and update `.auth.json`
+4. Never ask the user for credentials again if `.env` exists
+
+**Building the curl command from `.auth.json`:**
+```bash
+# OAuth (cloud) — Bearer header
+TOKEN=$(jq -r '.token' {use-case}/.auth.json)
+BASE=$(jq -r '.platform_url' {use-case}/.auth.json)
+curl -s "$BASE/health/adapters" -H "Authorization: Bearer $TOKEN"
+
+# Password (local) — query parameter
+curl -s "$BASE/health/adapters?token=$TOKEN"
+```
+
+**This means:** authenticate once during `/itential-setup`, then every subsequent skill (`/itential-builder`, `/flowagent`, etc.) reads `.auth.json` and just works. No re-asking, no re-authenticating unless the token expires.
+
 ### Token Expiration
 
-Tokens expire. If you get authentication errors mid-session, re-authenticate.
+Tokens expire. If you get authentication errors mid-session, re-authenticate using the `.env` credentials and update `.auth.json`. The user should never need to re-enter credentials manually.
 
 ---
 

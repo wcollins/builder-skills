@@ -2,9 +2,9 @@
   "timestamp": "2026-03-08T10:45:00Z",
   "platform": "https://platform-6.0-dev.se.itential.io",
   "summary": {
-    "passed": 11,
+    "passed": 19,
     "failed": 0,
-    "total": 11,
+    "total": 19,
     "pass_rate": 100.0
   },
   "tests": {
@@ -63,6 +63,31 @@
         {"test": "T3: error transition caught adapter failure", "status": "PASS", "expected": "caught", "actual": "caught"}
       ],
       "notes": "ServiceNow adapter returned an error (likely auth/field validation), but the error transition correctly caught it and routed to the error handler task. This validates the error handling pattern works."
+    },
+    "test4_flowagent": {
+      "pattern": "create provider -> discover tools -> create agent -> call -> check mission",
+      "status": "PASS",
+      "platform": "http://localhost:4000",
+      "gotchas_tested": [
+        "Agent create body wrapped in {details: {...}}",
+        "Agent create returns {id} not full object",
+        "Agent retrievable by name after creation",
+        "Mission tracks success, conclusion, tokenUsage",
+        "Tool identifiers use // separator format",
+        "Tool discovery endpoint scans platform",
+        "Provider listing works",
+        "Mission conclusion may contain control chars (newlines) — use strict=False parsing"
+      ],
+      "assertions": [
+        {"test": "F1: Agent created", "status": "PASS", "actual": "id returned"},
+        {"test": "F1: Agent retrievable by name", "status": "PASS", "actual": "name matches"},
+        {"test": "F2: Mission succeeded", "status": "PASS", "actual": "success=True"},
+        {"test": "F2: Got conclusion", "status": "PASS", "actual": "haiku returned"},
+        {"test": "F2: Token usage tracked", "status": "PASS", "actual": "27 input tokens"},
+        {"test": "F3: Providers available", "status": "PASS", "actual": "8 providers"},
+        {"test": "F4: Tool // format", "status": "PASS", "actual": "556/556 tools"},
+        {"test": "F5: Discovery endpoint", "status": "PASS", "actual": "responded"}
+      ]
     }
   },
   "gotchas_validated_on_live_platform": {
