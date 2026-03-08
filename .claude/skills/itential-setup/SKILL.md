@@ -6,18 +6,18 @@ argument-hint: "[use-case-name]"
 
 # Itential Setup — Connect and Go
 
-This is the entry point. Authenticate, choose your path, then the right amount of discovery happens automatically.
+This is the entry point. Authenticate, discover the environment, then build.
 
 ```
 /itential-setup
     │
-    ├── Step 1: Auth only (instant)
+    ├── Step 1: Authenticate
     │
-    ├── Step 2: "Ad-hoc or spec-based?"
+    ├── Step 2: "Exploring or building from a spec?"
     │     │
-    │     ├── Ad-hoc → Light bootstrap → Explore with skills
+    │     ├── Exploring → Pull platform data → Use skills as needed
     │     │
-    │     └── Spec-based → Pick spec → Heavy bootstrap → Solution design flow
+    │     └── Spec-based → Pick spec → Pull platform data → Review spec → /solution-design
     │
     └── Already set up? → Reuse existing working directory
 ```
@@ -103,11 +103,11 @@ Tokens expire. If you get authentication errors mid-session, re-authenticate.
 
 Once authenticated, ask: **"Are you exploring or building from a spec?"**
 
-### Path A: Ad-hoc / Explore
+### Path A: Exploring
 
-The engineer wants to poke around, build freestyle, or isn't sure yet.
+The engineer wants to look around, build freestyle, or isn't sure yet.
 
-**Light bootstrap** — pull only what's needed to explore:
+**Pull platform data** to a working directory:
 
 ```bash
 mkdir {use-case-name}
@@ -129,9 +129,7 @@ curl -s "{BASE}/health/applications?token=TOKEN" > {use-case}/applications.json
 ```
 
 Present a quick summary (adapters running, app count, task count) and point them to the skills:
-- **`/itential-studio`** — create workflows, templates, projects, discover tasks
-- **`/itential-workflow-engine`** — run/test workflows, utility tasks, wiring patterns, debugging
-- **`/itential-mop`** — command templates, analytic templates, validation checks
+- **`/itential-builder`** — create projects, workflows, templates, command templates (MOP), run/test, debug
 - **`/itential-devices`** — devices, backups, diffs, device groups
 - **`/itential-golden-config`** — golden config, compliance, remediation
 - **`/iag`** — IAG services (Python, Ansible, OpenTofu)
@@ -157,9 +155,9 @@ mkdir {use-case-name}
 cp spec-files/spec-port-turn-up.md {use-case}/spec.md
 ```
 
-**3. Heavy bootstrap** — pull everything needed for design + build. Two stages:
+**3. Pull all platform data.** Two stages:
 
-**Stage 1: Core platform data** (direct API calls):
+**Stage 1: Core platform data:**
 ```bash
 curl -s "{BASE}/help/openapi?url={ENCODED_BASE}&token=TOKEN" > {use-case}/openapi.json
 curl -s "{BASE}/workflow_builder/tasks/list?token=TOKEN" > {use-case}/tasks.json
@@ -168,25 +166,46 @@ curl -s "{BASE}/health/adapters?token=TOKEN" > {use-case}/adapters.json
 curl -s "{BASE}/health/applications?token=TOKEN" > {use-case}/applications.json
 ```
 
-**Stage 2: Use-case data** — invoke the other skills using the Skill tool to get the correct API details:
-- **Invoke `/itential-devices`** → use its device listing API (POST with options body) to pull devices and device groups. Save to `{use-case}/devices.json` and `{use-case}/device-groups.json`.
-- **Invoke `/itential-studio`** → use its workflow listing API to pull existing workflows and templates. Save to `{use-case}/workflows.json`.
+**Stage 2: Environment-specific data:**
 
-**You MUST invoke these skills** — they have the correct HTTP methods, request bodies, and response shapes. The device endpoint is a POST (not GET), workflows use `items` (not `results`). Don't guess, load the skill.
+**Devices** (note: POST, not GET):
+```bash
+curl -s -X POST "{BASE}/configuration_manager/devices?token=TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"options":{"start":0,"limit":1000,"sort":{"name":1},"order":"ascending"}}' \
+  > {use-case}/devices.json
+```
+Response shape: `{"list": [...]}` — devices are in the `list` field.
 
-**4. Present the full environment summary:**
-- Adapters running (which external systems are available)
-- Device inventory (count, OS types)
-- Existing workflows (reuse candidates)
-- Existing templates and command templates
+**Device groups:**
+```bash
+curl -s "{BASE}/configuration_manager/deviceGroups?token=TOKEN" > {use-case}/device-groups.json
+```
 
-**5. Transition to `/solution-design`** — the working directory is fully bootstrapped. Solution-design reads local files, makes zero additional API calls for discovery.
+**Existing workflows:**
+```bash
+curl -s "{BASE}/automation-studio/workflows?limit=500&token=TOKEN" > {use-case}/workflows.json
+```
+Response shape: `{"items": [...]}` — workflows are in the `items` field.
+
+**Do NOT invoke other skills during this step.** The APIs above are all you need for discovery. Only invoke `/itential-builder` later when you're ready to build.
+
+**4. Review the spec against the environment:**
+
+Read the forked spec and the environment data. For each capability and integration in the spec:
+- Check if the platform can do it (adapter exists? app available?)
+- Resolve what you can from the data
+- Ask the engineer only what the data can't answer
+
+Update `{use-case}/spec.md` with everything learned. Present it to the engineer for approval (Gate 1).
+
+**5. Transition to `/solution-design`** — the working directory has all the data. Solution-design reads local files and produces the implementation plan.
 
 ---
 
-## What Gets Created
+## Files Created
 
-### Light Bootstrap (ad-hoc)
+### Exploring
 
 | File | Purpose |
 |------|---------|
@@ -196,11 +215,11 @@ curl -s "{BASE}/health/applications?token=TOKEN" > {use-case}/applications.json
 | `adapters.json` | Adapter details: `id`, `package_id`, `state`, `connection.state` |
 | `applications.json` | Application details with state |
 
-### Heavy Bootstrap (spec-based) — adds:
+### Spec-based — adds:
 
 | File | Purpose |
 |------|---------|
-| `spec.md` | Customer's spec — forked from generic, their source of truth |
+| `spec.md` | Forked spec — updated with environment details, engineer input |
 | `devices.json` | Device inventory |
 | `workflows.json` | Existing workflows (reuse candidates) |
 | `device-groups.json` | Device groups |
@@ -224,14 +243,11 @@ jq '.paths["/configuration_manager/devices"].post.requestBody' {use-case}/openap
 
 **When an API call fails or returns 404:** look it up in `openapi.json` first. Don't guess.
 
-**When debugging ANY issue — check local files FIRST, not the API:**
-- Wrong field name? → `openapi.json` has every request body schema with exact field names and types
-- Task not found? → `tasks.json` has all 11,000+ tasks — search with grep or jq
+**When debugging — check local files FIRST, not the API:**
+- Wrong field name? → `openapi.json` has every request body schema
+- Task not found? → `tasks.json` has all tasks — search with grep or jq
 - Wrong app name? → `apps.json` has the correct casing
-- Payload structure unclear? → `openapi.json` has the full schema, `task-schemas.json` has task variable definitions
 - Already fetched a schema? → Check `task-schemas.json` before calling `multipleTaskDetails` again
-
-**The filesystem is your debugger.** Stop guessing and read the local files — the answer is already there.
 
 ## Key Adapter Mapping
 

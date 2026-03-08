@@ -8,40 +8,41 @@ Each skill owns a domain. **Invoke the skill using the Skill tool before working
 
 | Skill | Owns | When to Use |
 |-------|------|-------------|
-| `/itential-setup` | **Entry point** | Always start here. Auth, bootstrap, then routes to explore or build-from-spec. |
-| `/itential-studio` | Building automation | Create/edit workflows, templates, projects. Discover tasks from the palette. |
-| `/itential-workflow-engine` | Running workflows | Start/monitor jobs, utility tasks (query, merge, eval, childJob, forEach), $var resolution, workflow patterns, debugging. |
-| `/itential-mop` | Command validation | Command templates, analytic templates, eval types, RunCommandTemplate. |
+| `/itential-setup` | **Entry point** | Always start here. Auth, discover environment, spec review. |
+| `/solution-design` | Design + plan | Entered from setup. Produce solution design, refine, get approval. |
+| `/itential-builder` | **Building everything** | Create projects, workflows, templates (Jinja2/TextFSM), command templates (MOP). Wire tasks, run jobs, debug. |
 | `/itential-devices` | Device operations | List devices, get configs, backup, diff, device groups, apply templates. |
 | `/itential-golden-config` | Compliance | Golden config trees, config specs, compliance plans, grading, remediation. |
 | `/iag` | Automation Gateway | Build IAG services (iagctl), call them from workflows (GatewayManager.runService). |
 | `/itential-inventory` | Inventory management | Device inventories, nodes, actions, tags. Required for IAG5. |
 | `/itential-lcm` | Lifecycle management | Resource models, instances, actions, execution history. Service lifecycle. |
-| `/solution-design` | Spec-driven delivery | Entered from setup. Fork spec, design, refine, plan, build. |
 
 ### User Flow
 
-`/itential-setup` is the single entry point. It handles auth + bootstrap, then routes:
+`/itential-setup` is the single entry point. It handles auth, environment discovery, and spec review, then routes to build:
 
 ```
-/itential-setup
-  ├── Auth + Bootstrap (always)
+/itential-setup          → Auth, discover environment, spec review (Gate 1)
   │
-  ├── "Build from a spec" → /solution-design
-  │     Fork spec → Discover → Design → Refine → Plan → Build
-  │     Uses /itential-studio, /itential-workflow-engine, /itential-mop,
-  │     /itential-devices, /itential-golden-config, /iag as needed
+  ├── "Build from a spec"
+  │     /solution-design → Design document (Gate 2)
+  │     /itential-builder → Create project, build all assets, test
   │
   └── "Explore / build freestyle"
-        /itential-studio — create workflows, templates, projects
-        /itential-workflow-engine — run jobs, wire tasks, debug
-        /itential-mop — command templates, validation checks
-        /itential-devices — device inventory, configs, backups
+        /itential-builder → projects, workflows, templates, MOP, run/test
+        /itential-devices — devices, backups, diffs, device groups
         /itential-golden-config — compliance, golden config
         /iag — IAG services (Python, Ansible, OpenTofu)
 ```
 
-**IMPORTANT: Invoke skills using the Skill tool** — don't just reference them in text. When you need to work with devices, invoke `/itential-devices`. When you need to build a workflow, invoke `/itential-studio`. The skills contain the API details you need. Without loading them, you're guessing.
+**Typical spec-based flow (3 skill loads):**
+```
+/itential-setup     → auth, discover environment, spec review (Gate 1)
+/solution-design    → design document, component inventory (Gate 2)
+/itential-builder   → create project, build everything, test
+```
+
+**IMPORTANT: Invoke skills using the Skill tool** — don't just reference them in text. When you need to build workflows/templates, invoke `/itential-builder`. When you need to work with devices, invoke `/itential-devices`. The skills contain the API details you need. Without loading them, you're guessing.
 
 ### Key Rule: Look Up Before You Act — Don't Guess
 
@@ -57,7 +58,7 @@ curl -s "{BASE}/help/openapi?url={ENCODED_BASE}" -H "Authorization: Bearer {TOKE
 # Local dev
 curl -s "{BASE}/help/openapi?url={ENCODED_BASE}&token={TOKEN}" > openapi.json
 ```
-The bootstrap script does this automatically. If you're working outside bootstrap, fetch it yourself.
+The setup skill does this automatically. If you're working outside setup, fetch it yourself.
 
 **Before making any API call:**
 1. Check the relevant skill for the pattern
@@ -90,7 +91,7 @@ The bootstrap script does this automatically. If you're working outside bootstra
 5. **`job.error` array** — for runtime errors (not just task status)
 6. **Actual task output** — `status: complete` doesn't mean the CLI commands worked
 
-**The filesystem is your debugger.** Every API endpoint, every task schema, every adapter name is already saved locally after bootstrap. Never guess a payload structure, field name, or endpoint path — the answer is in these files. Reading a local file costs zero API calls and zero time.
+**The filesystem is your debugger.** Every API endpoint, every task schema, every adapter name is already saved locally after setup. Never guess a payload structure, field name, or endpoint path — the answer is in these files. Reading a local file costs zero API calls and zero time.
 
 ## Understanding User Intent
 
@@ -98,7 +99,7 @@ Figure out which **category of work** the user needs:
 
 - **Building** — create something new (workflow, template, compliance standard). Start with requirements, then build.
 - **Operating** — do something now (configure a device, run compliance, backup configs). Identify targets and execute.
-- **Exploring** — understand what's available (devices, adapters, workflows). Bootstrap and navigate.
+- **Exploring** — understand what's available (devices, adapters, workflows). Discover and navigate.
 - **Debugging** — something broke (workflow failing, adapter errors). Get job details, check `job.error`.
 - **Designing** — planning architecture (modular workflows, compliance hierarchy). Think before building.
 
@@ -114,7 +115,7 @@ Before building anything, understand:
 
 ### Step 2: Set Up the Environment
 
-Use `/itential-setup` to authenticate and bootstrap. Then use `/itential-devices` and `/itential-studio` to discover what's available.
+Use `/itential-setup` to authenticate and discover the environment.
 
 ### Step 3: Build Incrementally
 
@@ -147,14 +148,15 @@ When something fails: check `job.status`, check `job.error` array, look at `IAPe
 
 1. **Never invent task names** — always look them up from `tasks/list`
 2. **Always get the schema before building** — `multipleTaskDetails?dereferenceSchemas=true`
-3. **Adapter `app` field comes from `apps/list`**, not `tasks/list` (names can be completely different, not just casing). Resolve from bootstrapped `apps.json` and `adapters.json`. When multiple adapter apps exist for the same product, ask the user.
+3. **Adapter `app` field comes from `apps/list`**, not `tasks/list` (names can be completely different, not just casing). Resolve from local `apps.json` and `adapters.json`. When multiple adapter apps exist for the same product, ask the user.
 4. **Test each piece individually** before composing into a larger workflow
 5. **Check `job.error` for failures**, not just task status
 6. **Variable syntax differs by context:**
    - Jinja2 templates: `{{ var }}`
    - Command templates / makeData: `<!var!>`
    - Workflow wiring: `$var.job.x`
-   - childJob/merge refs: `{"task": "job", "value": "varName"}`
+   - childJob variable refs: `{"task": "job", "value": "varName"}`
+   - merge/evaluation refs: `{"task": "job", "variable": "varName"}` (NOT `"value"` — different field than childJob)
 7. **Validation errors = draft workflow** that cannot be started
 8. **`$var` references don't resolve inside object values** (e.g., inside `newVariable` value or adapter `body`) — use `merge`, `makeData`, `query`, or other utility tasks to build the object, then pass it as a top-level `$var` reference
 9. **Task IDs are hex-only** — `[0-9a-f]{1,4}`. Non-hex IDs (e.g., `apush`) cause `$var` references to silently fail (classified as static, never resolved)
@@ -162,10 +164,14 @@ When something fails: check `job.status`, check `job.error` array, look at `IAPe
 11. **Create projects first, then build inside them** — moving/copying assets into a project re-prefixes names and changes `_id` but does NOT update internal references (childJob workflow refs, template names, transformation IDs)
 12. **API response shapes vary** — projects use `{message, data, metadata}`, but workflow and template lists use `{items, skip, limit, total}`, and create endpoints return `{created, edit}`. Always check the response shape before parsing
 13. **Project component types** — valid values: `workflow`, `template`, `transformation`, `jsonForm`, `mopCommandTemplate`, `mopAnalyticTemplate`
-14. **Use skills, don't reimplement** — each skill owns its domain
+14. **Use skills, don't reimplement** — `/itential-builder` covers projects, workflows, templates, MOP, and testing. Only load other skills for their specific domains (devices, compliance, IAG, etc.)
 15. **When unsure about ANY endpoint, method, or payload — check `openapi.json` FIRST.** Run `jq '.paths["/the/endpoint"]' {use-case}/openapi.json` to see the method, request body schema, and response schema. Don't guess, don't try variations, don't make up field names — look it up. The spec is always right.
 16. **If `openapi.json` is not local, fetch it** — `GET /help/openapi?url={ENCODED_BASE}` and save it. Then search locally.
 17. **If the openapi schema is empty for an endpoint** — check the corresponding POST/PUT endpoint's schema for the wrapper pattern. As a last resort, send `{}` and read the `"Missing Params"` error — it lists every required field with name, type, and examples.
+18. **Endpoint base paths differ** — task catalog is at `/workflow_builder/tasks/list`, but task schemas are at `/automation-studio/multipleTaskDetails` (NOT `/workflow_builder/multipleTaskDetails`). Don't mix them up.
+19. **Error transitions are mandatory on adapter/external tasks** — without an error transition, task errors produce "Job has no available transitions" and the job gets stuck forever. Always add `"state": "error"` transitions on tasks that call adapters or external systems.
+20. **Adapter responses are transformed** — adapters reshape the upstream API response. Don't assume the native API's response structure (e.g., ServiceNow `result.sys_id`). Call the adapter endpoint directly or check `openapi.json` to verify the actual response shape before wiring query paths.
+21. **Duplicate transition keys to same target** — JSON doesn't allow two keys with the same name. If a task needs both `success` and `error` to reach `workflow_end`, create an error handler task (e.g., `newVariable` to set error status) and route error there, then route that task to `workflow_end`.
 
 ## Helper JSON Templates
 
