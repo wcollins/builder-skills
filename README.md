@@ -5,8 +5,9 @@ Skills and specs that enable an AI agent (Claude Code) to help engineers build a
 ## What's Here
 
 ```
-.claude/skills/              Claude Code slash commands (10 skills)
+.claude/skills/              Claude Code slash commands (12 skills)
   itential-setup/            Entry point: auth, bootstrap, route
+  itential-builder/          Build everything: projects, workflows, templates, MOP
   itential-studio/           Workflow/template/project CRUD, task palette
   itential-workflow-engine/  Run jobs, utility tasks, $var, patterns, debugging
   itential-mop/              Command templates, eval types, analytic templates
@@ -22,8 +23,9 @@ environments/                Pre-configured platform credentials
   cloud-lab.env              Cloud OAuth template
   staging.env                Staging OAuth template
 
-helpers/                     JSON/YAML templates + bootstrap script
+helpers/                     JSON/YAML templates, reference workflows
 spec-files/                  21 technology-agnostic HLD use-case specs
+evals/                       Skill evaluation suite + e2e integration tests
 docs/                        Architecture diagrams
 CLAUDE.md                    Agent instructions (auto-loaded by Claude Code)
 ```
@@ -43,7 +45,7 @@ cd itential-skills
 claude
 ```
 
-Claude Code automatically loads `CLAUDE.md` and the 10 skills.
+Claude Code automatically loads `CLAUDE.md` and the skills.
 
 ### Connect to Your Platform
 
@@ -99,6 +101,7 @@ See `docs/developer-flow.md` for the full process diagram.
 | Skill | What It Does |
 |-------|-------------|
 | `/itential-setup` | **Start here.** Auth (from env file or interactive), bootstrap, route to spec-based or freestyle. |
+| `/itential-builder` | **Build everything.** Projects, workflows, templates (Jinja2/TextFSM), command templates (MOP). Wire tasks, run jobs, debug. Includes adapter discovery guide. |
 | `/itential-studio` | Create workflows, Jinja2/TextFSM templates, projects. Discover tasks from the palette and get schemas. |
 | `/itential-workflow-engine` | Run and test workflows. Utility tasks (query, merge, evaluation, childJob, forEach). $var resolution, patterns, debugging. |
 | `/itential-mop` | Build command templates with validation rules. Run CLI checks against devices. Analytic templates for pre/post comparison. |
@@ -178,4 +181,25 @@ JSON/YAML templates in `helpers/` — always start from these when creating asse
 | `run-compliance-plan.json` | Run compliance plan |
 | `run-compliance.json` | Run compliance directly |
 | `lcm-action-workflow.json` | LCM action workflow (must output `instance` variable) |
+| `reference-adapter-workflow.json` | Complete adapter workflow with merge, query, error handling |
+| `reference-childjob-loop.json` | Parent + child workflows for childJob loop pattern |
+| `reference-parent-workflow.json` | Parent orchestrator with childJob → query → evaluation |
+| `reference-child-workflow.json` | Child workflow with try-catch (always sets taskStatus) |
+| `reference-merge-makedata.json` | merge → makeData pattern for string/JSON construction |
 | `helpers/iag/` | IAG service examples (Python, Ansible, OpenTofu, multi-service) |
+
+## Evals
+
+Skill evaluation suite in `evals/`:
+
+| File | Purpose |
+|------|---------|
+| `evals.json` | 32 assertion-based test cases across 5 skills (81 assertions) |
+| `COVERAGE-REPORT.md` | Gotcha coverage matrix — 58/58 documented, 24/24 critical tested |
+| `e2e/run-e2e-tests.sh` | End-to-end test runner (deploys workflows, runs jobs, validates) |
+| `e2e/e2e-results.json` | Latest results: 11/11 pass on cloud platform |
+| `e2e/test1-*.json` | Utility chain: merge → makeData → query → evaluation branching |
+| `e2e/test2-*.json` | childJob loop: parent fans out to child per device |
+| `e2e/test3-*.json` | Adapter pattern: merge → ServiceNow create → query response |
+
+Run e2e tests: `bash evals/e2e/run-e2e-tests.sh`
