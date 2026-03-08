@@ -150,14 +150,20 @@ The engineer wants to build a use case from an HLD spec.
 Or the engineer describes what they need and you recommend a spec.
 
 **2. Create working directory and fork the spec:**
+
+If the directory already exists AND the spec file is already there, **reuse it** — the engineer may have customized it from a previous session. Do NOT overwrite. Only copy the spec if it doesn't exist yet.
+
 ```bash
-mkdir {use-case-name}
-cp spec-files/spec-port-turn-up.md {use-case}/spec.md
+mkdir -p {use-case-name}
+# Only fork the spec if it doesn't already exist
+[ ! -f {use-case}/{use-case}-spec.md ] && cp spec-files/spec-port-turn-up.md {use-case}/{use-case}-spec.md
 ```
 
-**3. Pull all platform data.** Two stages:
+**3. Pull all platform data.**
 
-**Stage 1: Core platform data:**
+Run these in two groups. **Do not run them all in one parallel batch** — if one call fails, parallel cancellation kills the others. Run Stage 1 together, then Stage 2 together.
+
+**Stage 1: Core platform data** (run these in parallel):
 ```bash
 curl -s "{BASE}/help/openapi?url={ENCODED_BASE}&token=TOKEN" > {use-case}/openapi.json
 curl -s "{BASE}/workflow_builder/tasks/list?token=TOKEN" > {use-case}/tasks.json
@@ -166,27 +172,33 @@ curl -s "{BASE}/health/adapters?token=TOKEN" > {use-case}/adapters.json
 curl -s "{BASE}/health/applications?token=TOKEN" > {use-case}/applications.json
 ```
 
-**Stage 2: Environment-specific data:**
+**Stage 2: Environment-specific data** (run these in parallel, after Stage 1 succeeds):
 
 **Devices** (note: POST, not GET):
 ```bash
-curl -s -X POST "{BASE}/configuration_manager/devices?token=TOKEN" \
+curl -s -w "\n%{http_code}" -X POST "{BASE}/configuration_manager/devices?token=TOKEN" \
   -H "Content-Type: application/json" \
-  -d '{"options":{"start":0,"limit":1000,"sort":{"name":1},"order":"ascending"}}' \
+  -d '{"options":{"start":0,"limit":1000,"sort":[{"name":1}],"order":"ascending"}}' \
   > {use-case}/devices.json
 ```
 Response shape: `{"list": [...]}` — devices are in the `list` field.
 
 **Device groups:**
 ```bash
-curl -s "{BASE}/configuration_manager/deviceGroups?token=TOKEN" > {use-case}/device-groups.json
+curl -s -w "\n%{http_code}" "{BASE}/configuration_manager/deviceGroups?token=TOKEN" > {use-case}/device-groups.json
 ```
 
 **Existing workflows:**
 ```bash
-curl -s "{BASE}/automation-studio/workflows?limit=500&token=TOKEN" > {use-case}/workflows.json
+curl -s -w "\n%{http_code}" "{BASE}/automation-studio/workflows?limit=500&token=TOKEN" > {use-case}/workflows.json
 ```
 Response shape: `{"items": [...]}` — workflows are in the `items` field.
+
+**Handling failures:** Some endpoints may return errors (HTML pages, empty responses, or non-200 status codes). Before parsing any saved file, check if it contains valid JSON:
+```bash
+jq type {use-case}/devices.json 2>/dev/null || echo "empty"
+```
+If a file is invalid, treat it as "no data available" and move on — don't let one failed endpoint block the entire flow. Not every use case needs every data type (e.g., change management doesn't need devices).
 
 **Do NOT invoke other skills during this step.** The APIs above are all you need for discovery. Only invoke `/itential-builder` later when you're ready to build.
 
@@ -197,9 +209,23 @@ Read the forked spec and the environment data. For each capability and integrati
 - Resolve what you can from the data
 - Ask the engineer only what the data can't answer
 
-Update `{use-case}/spec.md` with everything learned. Present it to the engineer for approval (Gate 1).
+Update `{use-case}/{use-case}-spec.md` with everything learned.
 
-**5. Transition to `/solution-design`** — the working directory has all the data. Solution-design reads local files and produces the implementation plan.
+**5. Present the spec for approval (Gate 1):**
+
+Show the engineer:
+- Environment summary (adapters, apps, devices, existing workflows)
+- Spec requirements resolved against the environment (what's available, what's missing)
+- Remaining questions that data couldn't answer
+- Updated spec with all changes
+
+Ask: *"Here's your spec updated with what I found. Review it — add, remove, or change anything. When you approve, I'll design the solution."*
+
+The engineer may add features, remove scope, change decisions, or adjust acceptance criteria. Update `{use-case}/{use-case}-spec.md` with every change.
+
+**When the engineer approves: the spec is locked.** Save the file.
+
+**6. Transition to `/solution-design`** — the working directory has all the data and an approved spec. Solution-design reads local files and produces the implementation plan (Gate 2).
 
 ---
 
@@ -219,7 +245,7 @@ Update `{use-case}/spec.md` with everything learned. Present it to the engineer 
 
 | File | Purpose |
 |------|---------|
-| `spec.md` | Forked spec — updated with environment details, engineer input |
+| `{use-case}-spec.md` | Forked spec — updated with environment details, engineer input |
 | `devices.json` | Device inventory |
 | `workflows.json` | Existing workflows (reuse candidates) |
 | `device-groups.json` | Device groups |

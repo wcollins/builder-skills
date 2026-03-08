@@ -30,7 +30,7 @@ spec-files/spec-port-turn-up.md        ← Generic template (never modified)
         │
         │  Fork + customize
         ▼
-{use-case}/spec.md                     ← Customer's spec → GATE 1: engineer approves
+{use-case}/{use-case}-spec.md                     ← Customer's spec → GATE 1: engineer approves
         │
         │  Resolve against environment
         ▼
@@ -41,7 +41,7 @@ spec-files/spec-port-turn-up.md        ← Generic template (never modified)
 {use-case}/*.json                      ← Built assets (workflows, templates, etc.)
 ```
 
-**When the customer wants to change something later:** modify `{use-case}/spec.md` and re-run.
+**When the customer wants to change something later:** modify `{use-case}/{use-case}-spec.md` and re-run.
 
 ---
 
@@ -72,7 +72,7 @@ Section 7 has three parts:
 
 ### 1A. Read the Customer Spec
 
-The spec was forked to `{use-case}/spec.md` during setup. Read it and extract:
+The spec was forked to `{use-case}/{use-case}-spec.md` during setup. Read it and extract:
 - **Phases** from Section 3 (workflow stages)
 - **Design decisions** from Section 4 (constraints)
 - **Capabilities** table from Section 7 (platform checks)
@@ -109,7 +109,7 @@ Present what you found alongside remaining questions.
 
 ### 1E. Update the Customer Spec
 
-Incorporate ALL engineer input into `{use-case}/spec.md`:
+Incorporate ALL engineer input into `{use-case}/{use-case}-spec.md`:
 - Added requirements → update Section 7
 - Changed scope → update Section 5
 - Business rules → add to relevant sections
@@ -137,7 +137,7 @@ The engineer may:
 - Change decisions ("auto-rollback, not manual review")
 - Adjust acceptance criteria
 
-Update `{use-case}/spec.md` with every change.
+Update `{use-case}/{use-case}-spec.md` with every change.
 
 **When the engineer approves: the spec is locked.** This is what the solution design will be based on. Save the file.
 
@@ -227,7 +227,7 @@ The engineer may:
 Update `{use-case}/solution-design.md` with every change.
 
 **When the engineer approves: the design is locked.** Both documents are saved before any building begins:
-1. `{use-case}/spec.md` — what they asked for
+1. `{use-case}/{use-case}-spec.md` — what they asked for
 2. `{use-case}/solution-design.md` — how it gets built
 
 ---
@@ -286,7 +286,7 @@ The `{use-case}/` directory contains everything:
 
 | File | Purpose |
 |------|---------|
-| `spec.md` | Customer's spec — approved at Gate 1 |
+| `{use-case}-spec.md` | Customer's spec — approved at Gate 1 |
 | `solution-design.md` | Implementation plan — approved at Gate 2 |
 | `customer-context.md` | Business rules, naming conventions (if provided) |
 | `openapi.json` | Platform API reference |
@@ -309,7 +309,7 @@ Deliver:
 
 Entered from `/itential-setup` when the engineer chooses "Build from a spec." By that point:
 - Auth done
-- Spec forked to `{use-case}/spec.md`
+- Spec forked to `{use-case}/{use-case}-spec.md`
 - Environment data pulled (all data in local files)
 
 ```
@@ -324,4 +324,4 @@ Entered from `/itential-setup` when the engineer chooses "Build from a spec." By
     8. Plan + build everything
 ```
 
-To modify later: update `{use-case}/spec.md` → re-run from Gate 1.
+To modify later: update `{use-case}/{use-case}-spec.md` → re-run from Gate 1.

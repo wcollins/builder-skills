@@ -23,6 +23,384 @@ This skill covers everything needed to build and test Itential automation assets
 
 ---
 
+## Guides
+
+### Guide 1: Build a workflow end-to-end
+
+Follow these steps in order. Do not skip any step.
+
+**Step 1: Find tasks.** Search `tasks.json` for the tasks you need:
+```bash
+jq '.[] | select(.name | test("keyword"; "i")) | {name, app, location, canvasName, displayName}' {use-case}/tasks.json
+```
+
+**Step 2: Resolve adapter app names.** For adapter tasks, the `app` in tasks.json is WRONG. Look up the correct name:
+```bash
+jq '.[] | select(.name | test("keyword"; "i")) | {name, type}' {use-case}/apps.json
+```
+Also get the adapter instance name:
+```bash
+jq '.results[] | select(.package_id | test("keyword"; "i")) | {id, state}' {use-case}/adapters.json
+```
+You now have three values: `app` (from apps.json), `adapter_id` (from adapters.json `.id`), and `displayName` (from tasks.json).
+
+**Step 3: Fetch task schemas.** Get the full input/output schema for every task you'll use:
+```
+POST /automation-studio/multipleTaskDetails?dereferenceSchemas=true
+```
+```json
+{
+  "inputsArray": [
+    {"location": "Adapter", "pckg": "Servicenow", "method": "createChangeRequest"},
+    {"location": "Application", "pckg": "WorkFlowEngine", "method": "query"}
+  ]
+}
+```
+Use the `pckg` value from apps.json (Step 2), NOT tasks.json. Save the response to `{use-case}/task-schemas.json`.
+
+**Step 4: Map schema to workflow task JSON.** For each task, transform the schema into a workflow task:
+
+Schema response:
+```json
+{
+  "name": "createChangeRequest",
+  "variables": {
+    "incoming": {
+      "body": {"type": "object", "description": "Request body"}
+    },
+    "outgoing": {
+      "result": {"type": "object", "description": "Response"}
+    }
+  }
+}
+```
+
+Becomes this workflow task (use the adapter helper template as starting point):
+```json
+{
+  "a1b2": {
+    "name": "createChangeRequest",
+    "canvasName": "createChangeRequest",
+    "summary": "Create Change Ticket",
+    "description": "Creates a ServiceNow change request",
+    "location": "Adapter",
+    "locationType": "Servicenow",
+    "app": "Servicenow",
+    "type": "automatic",
+    "displayName": "ServiceNow",
+    "variables": {
+      "incoming": {
+        "body": "$var.e1a1.merged_object",
+        "adapter_id": "$var.job.adapter_id"
+      },
+      "outgoing": {
+        "result": null
+      },
+      "error": "",
+      "decorators": []
+    },
+    "groups": [],
+    "actor": "Pronghorn",
+    "scheduled": false,
+    "nodeLocation": {"x": 700, "y": 600}
+  }
+}
+```
+
+**Mapping rules:**
+- `name`, `canvasName` → from tasks.json
+- `app`, `locationType` → from apps.json (NOT tasks.json)
+- `displayName` → from tasks.json
+- `location` → `"Adapter"` or `"Application"` (from tasks.json)
+- `type` → `"automatic"` for adapters, `"operation"` for WorkFlowEngine utility tasks
+- `actor` → `"Pronghorn"` for all tasks except childJob (which uses `"job"`)
+- `incoming` → each schema key becomes a variable. Wire with `$var` for top-level values
+- `outgoing` → set to `null` (capture later with `$var.taskId.outVar`)
+- **Add `adapter_id`** to incoming for adapter tasks (not in schema, always required)
+- **Add `error` and `decorators`** to variables block
+
+**Step 5: Handle object inputs.** If a task's incoming variable is `type: "object"` (like `body`), you CANNOT put `$var` references inside it — they won't resolve. Use a `merge` task before it:
+
+```json
+{
+  "e1a1": {
+    "name": "merge",
+    "canvasName": "merge",
+    "summary": "Build Request Body",
+    "app": "WorkFlowEngine",
+    "type": "operation",
+    "variables": {
+      "incoming": {
+        "data_to_merge": [
+          {"key": "short_description", "value": {"task": "job", "variable": "short_description"}},
+          {"key": "description", "value": {"task": "job", "variable": "description"}}
+        ]
+      },
+      "outgoing": {"merged_object": null}
+    },
+    "actor": "Pronghorn"
+  }
+}
+```
+Then wire the adapter task's `body` to `"$var.e1a1.merged_object"`.
+
+**Step 6: Handle opaque schemas.** Some task schemas show `body: {type: "object"}` with no inner field details. The adapter validates internally. To discover required fields:
+1. Try creating with minimal fields — the error message lists what's missing (e.g., `"must have required property 'summary'"`)
+2. Check `openapi.json` for the adapter's endpoint schema
+3. Call the adapter directly: `POST /{adapter_id}/{method}` with `{}` body — read the validation error
+
+**Step 7: Wire transitions.** Every adapter task needs BOTH success and error transitions:
+```json
+"transitions": {
+  "a1b2": {
+    "b2c3": {"type": "standard", "state": "success"},
+    "ef01": {"type": "standard", "state": "error"}
+  }
+}
+```
+If both success and error need to reach `workflow_end`, route error to an intermediate `newVariable` task first (JSON can't have duplicate keys).
+
+**Step 8: Add inputSchema/outputSchema.** List all job variables the workflow expects as input and produces as output.
+
+**Step 9: Pre-submit checklist.**
+- [ ] Task IDs are hex-only (`[0-9a-f]{1,4}`)
+- [ ] `app` values come from apps.json, not tasks.json
+- [ ] `canvasName` values come from tasks.json `canvasName` field
+- [ ] Every adapter task has `adapter_id` in incoming
+- [ ] Every adapter task has an error transition
+- [ ] `evaluation` tasks have both success AND failure transitions
+- [ ] No `$var` references inside nested objects (use merge/makeData)
+- [ ] merge uses `"variable"`, childJob uses `"value"`
+- [ ] childJob has `actor: "job"`, all others have `actor: "Pronghorn"`
+- [ ] `workflow_end` transition is empty `{}`
+
+**Complete working example:** Read `helpers/reference-adapter-workflow.json` before building. It's a tested workflow (merge → adapter create → query → adapter update) with `_comment` fields explaining every decision.
+
+**How the example works — what each task does and why:**
+
+```
+workflow_start → e1a1 (merge) → a1b2 (createChangeRequest) → b2c3 (query) → c3d4 (updateChangeRequest) → workflow_end
+                                  ↓ error                                      ↓ error
+                                ef01 (newVariable) ────────────────────────────→ workflow_end
+```
+
+| Task ID | Task | Why it's there | Key fields |
+|---------|------|----------------|------------|
+| `e1a1` | `merge` | Builds the `body` object. `$var` can't resolve inside nested objects, so merge assembles the object from individual variables. | `data_to_merge` uses `"variable"` (NOT `"value"`). Needs at least 2 items. |
+| `a1b2` | `createChangeRequest` | Adapter call. `body` wired to `$var.e1a1.merged_object` (merge output). | `app`/`locationType` from apps.json (`Servicenow`), NOT tasks.json (`ServiceNow`). `adapter_id` added manually (not in schema). `type: "automatic"`. |
+| `b2c3` | `query` | Extracts the change ID from the adapter response. | `query: "response.id"` — adapters transform responses, don't assume native API shape. |
+| `c3d4` | `updateChangeRequest` | Second adapter call using the extracted ID. | `changeId` wired from `$var.job.changeId` (set by query's outgoing). |
+| `ef01` | `newVariable` | Error handler. Adapter error transitions route here. | Exists because JSON can't have duplicate keys — can't route both success and error to `workflow_end` from the same task. |
+
+**Field mapping — where each value comes from:**
+
+| Workflow task field | Source | Example |
+|---------------------|--------|---------|
+| `name` | tasks.json `.name` | `createChangeRequest` |
+| `canvasName` | tasks.json `.canvasName` | `createChangeRequest` (can differ: `arrayPush`→`push`) |
+| `app` | **apps.json** `.name` | `Servicenow` (NOT `ServiceNow` from tasks.json) |
+| `locationType` | Same as `app` for adapters, `null` for applications | `Servicenow` |
+| `displayName` | tasks.json `.displayName` | `ServiceNow` |
+| `location` | tasks.json `.location` | `Adapter` or `Application` |
+| `type` | `"automatic"` for adapters, `"operation"` for utility tasks | `automatic` |
+| `actor` | `"Pronghorn"` always, except childJob which uses `"job"` | `Pronghorn` |
+| `adapter_id` | adapters.json `.results[].id` | `ServiceNow` (instance name) |
+| incoming vars | From task schema (multipleTaskDetails) | `body`, `changeId` |
+| outgoing vars | From task schema, set to `null` | `result` |
+
+### Guide 2: Debug a failed job
+
+**Step 1:** Get the job:
+```
+GET /operations-manager/jobs/{jobId}
+```
+
+**Step 2:** Check `data.status`. If `"error"`, read `data.error[]`:
+```
+data.error[].task → failing task ID
+data.error[].message.IAPerror.displayString → human-readable error
+```
+
+**Step 3:** Match the error to a fix:
+
+| Error message | Cause | Fix |
+|---------------|-------|-----|
+| "Schema validation failed on must have required property 'X'" | Missing field in adapter body | Add the field to merge task |
+| "Method not found" | Wrong task name or app | Check tasks.json and apps.json |
+| "No available transitions" | Missing error transition | Add `"state": "error"` transition |
+| "Cannot find workflow" | childJob ref broken after project move | Update `workflow` field with `@projectId:` prefix |
+| "Referenced job variable: undefined" | merge uses `"value"` instead of `"variable"` | Change to `"variable"` in `data_to_merge` |
+| Job stuck in `"running"` | No error transition on failed task | Add error transition |
+
+**Step 4:** Fix locally, PUT to update, re-run. Don't recreate — updating preserves the ID.
+
+### Guide 3: Add a task to an existing workflow
+
+**Step 1:** Read the helper template for the task type:
+- Adapter task → `helpers/workflow-task-adapter.json`
+- Application task → `helpers/workflow-task-application.json`
+- childJob → `helpers/workflow-task-childjob.json`
+
+**Step 2:** Fill in the fields using the mapping rules from Guide 1 Step 4.
+
+**Step 3:** Generate a hex task ID (e.g., `d4e5`) — must be `[0-9a-f]{1,4}`.
+
+**Step 4:** Add the task to `tasks` and add transitions. Remember error transitions on adapter tasks.
+
+**Step 5:** Update via `PUT /automation-studio/automations/{id}` with `{"update": {...}}`.
+
+### Guide 4: Build a childJob (parent calls child workflow)
+
+childJob has two modes. Both are tested and verified on a live platform.
+
+#### Mode A: Single child — pass variables with `{"task","value"}`
+
+The parent passes specific variables to one child workflow run.
+
+**Parent childJob task:**
+```json
+{
+  "a1a1": {
+    "name": "childJob",
+    "canvasName": "childJob",
+    "summary": "Run Single Child",
+    "location": "Application",
+    "locationType": null,
+    "app": "WorkFlowEngine",
+    "type": "operation",
+    "displayName": "WorkFlowEngine",
+    "variables": {
+      "incoming": {
+        "task": "",
+        "workflow": "My Child Workflow",
+        "variables": {
+          "deviceName": {"task": "job", "value": "targetDevice"},
+          "action": {"task": "static", "value": "validate"}
+        },
+        "data_array": "",
+        "transformation": "",
+        "loopType": ""
+      },
+      "outgoing": {"job_details": null}
+    },
+    "actor": "job"
+  }
+}
+```
+
+**Variable passing rules (uses `"value"`, NOT `"variable"`):**
+- `{"task": "job", "value": "targetDevice"}` → passes the parent's `targetDevice` job variable to the child as `deviceName`
+- `{"task": "static", "value": "validate"}` → passes the literal string `"validate"`
+- `{"task": "b2c3", "value": "return_data"}` → passes a previous task's output (preferred for runtime data)
+
+**Extracting single child output:**
+```json
+{
+  "b2b2": {
+    "name": "query",
+    "variables": {
+      "incoming": {
+        "pass_on_null": false,
+        "query": "taskStatus",
+        "obj": "$var.a1a1.job_details"
+      },
+      "outgoing": {"return_data": "$var.job.childStatus"}
+    }
+  }
+}
+```
+Query uses flat variable names — `"taskStatus"`, NOT `"variables.job.taskStatus"`.
+
+#### Mode B: Loop — one child per item in `data_array`
+
+Each element in `data_array` becomes the child's input variables for that iteration. Set `variables: {}` (empty).
+
+**Parent childJob task:**
+```json
+{
+  "a1a1": {
+    "name": "childJob",
+    "canvasName": "childJob",
+    "summary": "Run Child Per Device",
+    "variables": {
+      "incoming": {
+        "task": "",
+        "workflow": "My Child Workflow",
+        "variables": {},
+        "data_array": "$var.job.devices",
+        "transformation": "",
+        "loopType": "parallel"
+      },
+      "outgoing": {"job_details": null}
+    },
+    "actor": "job"
+  }
+}
+```
+
+**Input:** `devices` is an array of objects. Each object becomes one child's variables:
+```json
+{
+  "devices": [
+    {"deviceName": "IOS-CAT8KV-1", "action": "backup"},
+    {"deviceName": "IOS-CAT8KV-2", "action": "check"},
+    {"deviceName": "EOS-AWS-1", "action": "backup"}
+  ]
+}
+```
+
+**Extracting loop output:** Query `"loop"` to get the results array:
+```json
+{
+  "b2b2": {
+    "name": "query",
+    "variables": {
+      "incoming": {
+        "pass_on_null": false,
+        "query": "loop",
+        "obj": "$var.a1a1.job_details"
+      },
+      "outgoing": {"return_data": "$var.job.childResults"}
+    }
+  }
+}
+```
+
+**Loop output shape** (each element is a flat spread of the child's job variables):
+```json
+[
+  {"status": "complete", "childJobLoopIndex": 0, "deviceName": "IOS-CAT8KV-1", "action": "backup", "taskStatus": "success"},
+  {"status": "complete", "childJobLoopIndex": 1, "deviceName": "IOS-CAT8KV-2", "action": "check", "taskStatus": "success"},
+  {"status": "complete", "childJobLoopIndex": 2, "deviceName": "EOS-AWS-1", "action": "backup", "taskStatus": "success"}
+]
+```
+
+Use `"[**].taskStatus"` in a query to extract one field from all iterations.
+
+#### childJob checklist
+- [ ] `actor` is `"job"` (NOT `"Pronghorn"`)
+- [ ] `task` is `""` (empty string)
+- [ ] `job_details` outgoing is `null`
+- [ ] All incoming fields present — even unused ones: `"data_array": ""`, `"transformation": ""`, `"loopType": ""`
+- [ ] Variables use `{"task","value"}` NOT `$var` (single mode)
+- [ ] `variables` is `{}` when using `data_array` (loop mode)
+- [ ] Child workflow's `inputSchema.required` matches what you're passing
+- [ ] `loopType`: `""` (single), `"parallel"` (simultaneous), `"sequential"` (one at a time)
+
+#### Building the child workflow
+
+The child workflow must:
+1. Accept inputs via `inputSchema` that match what the parent passes
+2. Set output variables via `newVariable` or task outgoing → `$var.job.x`
+3. Handle errors internally (try-catch pattern) so it always completes:
+```
+task --success--> newVariable("taskStatus" = "success") -> workflow_end
+task --error--> newVariable("taskStatus" = "error") -> workflow_end
+```
+The parent can then check `taskStatus` from `job_details` to decide what to do.
+
+---
+
 ## Projects
 
 | Method | Endpoint | Description |
@@ -963,21 +1341,41 @@ Every adapter task needs both success and error transitions. Route errors to an 
 
 ## Helper Templates
 
-**ALWAYS start from a helper template.** Read the file, modify for your use case, POST it.
+**Read the matching helper before building anything.** Helpers have the correct JSON structure. Modify them for your use case — do NOT build JSON from scratch.
 
-| File | Purpose |
-|------|---------|
-| `helpers/create-project.json` | Project creation |
-| `helpers/create-workflow.json` | Workflow scaffold (start/end) |
-| `helpers/workflow-task-application.json` | Application task template |
-| `helpers/workflow-task-adapter.json` | Adapter task template (includes error transition guidance) |
-| `helpers/workflow-task-childjob.json` | childJob task (`actor: "job"`, `task: ""`) |
-| `helpers/create-template-jinja2.json` | Jinja2 template |
-| `helpers/create-template-textfsm.json` | TextFSM template |
-| `helpers/create-command-template.json` | MOP command template |
-| `helpers/update-command-template.json` | Update command template (full replacement) |
-| `helpers/add-components-to-project.json` | Add assets to project |
-| `helpers/update-project-members.json` | Update project membership |
-| `helpers/reference-parent-workflow.json` | Reference: parent with childJob orchestration |
-| `helpers/reference-child-workflow.json` | Reference: child with makeData/query/merge |
-| `helpers/reference-merge-makedata.json` | Reference: merge → makeData pattern |
+### Scaffolds — start from these
+
+Read these first. They have the correct wrapper, required fields, and structure.
+
+| When you need to... | Read this helper | Then POST to |
+|---------------------|------------------|--------------|
+| Create a project | `helpers/create-project.json` | `POST /automation-studio/projects` |
+| Create a workflow | `helpers/create-workflow.json` | `POST /automation-studio/automations` |
+| Create a Jinja2 template | `helpers/create-template-jinja2.json` | `POST /automation-studio/templates` |
+| Create a TextFSM template | `helpers/create-template-textfsm.json` | `POST /automation-studio/templates` |
+| Create a MOP command template | `helpers/create-command-template.json` | `POST /mop/createTemplate` |
+| Update a MOP template | `helpers/update-command-template.json` | `POST /mop/updateTemplate/{name}` |
+| Add assets to a project | `helpers/add-components-to-project.json` | `POST /projects/{id}/components/add` |
+| Update project membership | `helpers/update-project-members.json` | `PATCH /projects/{id}` |
+
+### Task templates — embed these in your workflow
+
+When adding a task to a workflow, read the matching template and fill in the fields using the mapping rules from Guide 1 Step 4.
+
+| Task type | Read this helper | Key fields to set |
+|-----------|------------------|-------------------|
+| Application task (WorkFlowEngine, TemplateBuilder, etc.) | `helpers/workflow-task-application.json` | `app`, `name`, `canvasName`, incoming/outgoing from schema |
+| Adapter task (ServiceNow, etc.) | `helpers/workflow-task-adapter.json` | `app`/`locationType` from apps.json, add `adapter_id`, add error transition |
+| childJob task | `helpers/workflow-task-childjob.json` | `actor: "job"`, `task: ""`, variables use `{"task","value"}` syntax |
+
+### Reference workflows — study these patterns
+
+These are complete, tested workflows. Read them to understand how tasks connect, how data flows, and how error handling works. Each task has a `_comment` field explaining why it's there.
+
+| Pattern | Read this helper | What it teaches |
+|---------|------------------|-----------------|
+| Adapter workflow with merge + query + error handling | `helpers/reference-adapter-workflow.json` | merge builds objects, adapter tasks need error transitions, query extracts from adapter response, newVariable as error handler |
+| childJob loop (parent + child) | `helpers/reference-childjob-loop.json` | Has both parent and child workflows. data_array input, parallel/sequential, extracting loop results, try-catch in child |
+| childJob with evaluation (parent orchestrator) | `helpers/reference-parent-workflow.json` | childJob → query → evaluation pattern for checking child success/failure |
+| merge → makeData pattern | `helpers/reference-merge-makedata.json` | Building template variables with merge, then string substitution with makeData |
+| Child with makeData/query/merge | `helpers/reference-child-workflow.json` | Data transformation patterns inside a child workflow |

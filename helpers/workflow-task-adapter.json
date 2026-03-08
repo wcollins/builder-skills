@@ -1,5 +1,4 @@
 {
-  "_comment": "Template for adding an Adapter task to a workflow. Task ID should be a short hex string (e.g., 303c). Task name MUST come from the task palette. IMPORTANT: Always add an error transition for adapter tasks — without one, errors cause 'Job has no available transitions' and the job gets stuck. Example transitions: {\"303c\": {\"b647\": {\"type\": \"standard\", \"state\": \"success\"}, \"err1\": {\"type\": \"standard\", \"state\": \"error\"}}} where err1 is an error handler task (e.g., newVariable to set error status). If both success and error need to go to workflow_end, you CANNOT use duplicate keys in JSON — route error to an intermediate task first.",
   "name": "",
   "canvasName": "",
   "summary": "",
@@ -18,5 +17,8 @@
   "groups": [],
   "actor": "Pronghorn",
   "scheduled": false,
-  "nodeLocation": { "x": 600, "y": 1308 }
+  "nodeLocation": {
+    "x": 600,
+    "y": 1308
+  }
 }
