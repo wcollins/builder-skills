@@ -28,7 +28,7 @@ print("FLOWAGENT E2E TEST")
 print("=" * 60)
 
 # 1. Find Claude provider
-providers = api("GET", "/automationagency/providers")
+providers = api("GET", "/flowai/providers")
 claude = next((p["name"] for p in providers if p.get("type") == "claude" and p.get("config", {}).get("hasApiKey")), None)
 if not claude:
     print("ERROR: No Claude provider. Exiting.")
@@ -36,13 +36,13 @@ if not claude:
 print(f"Provider: {claude}")
 
 # 2. Discover tools
-api("POST", "/automationagency/discover/tools")
-tools = api("GET", "/automationagency/tools")
+api("POST", "/flowai/discover/tools")
+tools = api("GET", "/flowai/tools")
 print(f"Tools: {len(tools)}")
 
 # 3. Create poet agent
 print("\n--- Poet agent (no tools) ---")
-api("POST", "/automationagency/agents", {"details": {
+api("POST", "/flowai/agents", {"details": {
     "name": "zztest-poet", "description": "haiku",
     "identity": {"agent_account": "admin", "agent_password": "admin"},
     "llm": {"provider": claude, "overrides": {"model": "claude-haiku-4-5-20251001"}},
@@ -52,9 +52,9 @@ api("POST", "/automationagency/agents", {"details": {
     ],
     "capabilities": {"toolset": [], "agents": [], "projects": []}
 }})
-api("POST", "/automationagency/agents/zztest-poet/call", {"context": {}})
+api("POST", "/flowai/agents/zztest-poet/call", {"context": {}})
 time.sleep(5)
-for m in api("GET", "/automationagency/missions"):
+for m in api("GET", "/flowai/missions"):
     if m.get("agent") == "zztest-poet":
         print(f"  Success: {m.get('success')}")
         print(f"  Haiku: {m.get('conclusion','?')}")
@@ -65,7 +65,7 @@ print("\n--- Device inspector (with tools) ---")
 device_tool = next((t["identifier"] for t in tools if "getDevice" in t.get("identifier","") and t.get("active")), None)
 if device_tool:
     print(f"  Tool: {device_tool}")
-    api("POST", "/automationagency/agents", {"details": {
+    api("POST", "/flowai/agents", {"details": {
         "name": "zztest-inspector", "description": "device check",
         "identity": {"agent_account": "admin", "agent_password": "admin"},
         "llm": {"provider": claude, "overrides": {"model": "claude-haiku-4-5-20251001"}},
@@ -75,9 +75,9 @@ if device_tool:
         ],
         "capabilities": {"toolset": [device_tool], "agents": [], "projects": []}
     }})
-    api("POST", "/automationagency/agents/zztest-inspector/call", {"context": {}})
+    api("POST", "/flowai/agents/zztest-inspector/call", {"context": {}})
     time.sleep(10)
-    for m in api("GET", "/automationagency/missions"):
+    for m in api("GET", "/flowai/missions"):
         if m.get("agent") == "zztest-inspector":
             print(f"  Success: {m.get('success')}")
             print(f"  Conclusion: {m.get('conclusion','?')[:300]}")
@@ -90,8 +90,8 @@ else:
 # 5. Cleanup
 print("\n--- Cleanup ---")
 for name in ["zztest-poet", "zztest-inspector"]:
-    api("DELETE", f"/automationagency/agents/{name}")
-for m in api("GET", "/automationagency/missions"):
+    api("DELETE", f"/flowai/agents/{name}")
+for m in api("GET", "/flowai/missions"):
     if "zztest" in m.get("agent", ""):
-        api("DELETE", f"/automationagency/missions/{m['_id']}")
+        api("DELETE", f"/flowai/missions/{m['_id']}")
 print("Done")

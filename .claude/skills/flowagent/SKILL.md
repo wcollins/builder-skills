@@ -4,9 +4,9 @@ description: Create and run AI agents on the Itential Platform. Agents use LLMs 
 argument-hint: "[action or agent-name]"
 ---
 
-# Automation Agency - FlowAgent Skills Guide
+# FlowAI - Agent Skills Guide
 
-Automation Agency lets you create AI agents that use LLMs (Claude, OpenAI, Ollama, Databricks) to autonomously operate the Itential Platform. Agents can call adapters, run workflows, invoke IAG services, and delegate to other agents — all driven by natural language objectives.
+FlowAI lets you create AI agents that use LLMs (Claude, OpenAI, Ollama, Databricks) to autonomously operate the Itential Platform. Agents can call adapters, run workflows, invoke IAG services, and delegate to other agents — all driven by natural language objectives.
 
 ## Concepts
 
@@ -14,7 +14,8 @@ Automation Agency lets you create AI agents that use LLMs (Claude, OpenAI, Ollam
 - **Tool** — a callable function discovered from the platform (adapter methods, IAG services, application methods). Auto-discovered, stored in a toolchest.
 - **Mission** — a single execution of an agent. Tracks start/end, objective, conclusion, token usage, and tool call statistics.
 - **Provider Instance** — a configured LLM connection (Claude, OpenAI, Ollama, Databricks) with API keys and model settings.
-- **Capabilities** — what an agent is allowed to use: specific tools (by identifier), projects, workflows, and sub-agents.
+- **Decorator** — a named override for a tool's schema and description. Lets different teams customize the same tool with different required fields and examples.
+- **Capabilities** — what an agent is allowed to use: specific tools (by identifier), projects, workflows, sub-agents, and decorators.
 
 ## How to Build an Agent
 
@@ -33,10 +34,10 @@ Pull the tools locally so you can search and plan:
 
 ```bash
 # Discover all platform tools
-POST /automationagency/discover/tools
+POST /flowai/discover/tools
 
 # Pull the full list locally
-GET /automationagency/tools > tools.json
+GET /flowai/tools > tools.json
 
 # Search by keyword
 jq '.[] | select(.identifier | contains("ServiceNow"))' tools.json
@@ -47,7 +48,7 @@ GET /health/adapters
 GET /integrations
 
 # Check what providers are configured
-GET /automationagency/providers
+GET /flowai/providers
 ```
 
 ### Step 3: Plan the agent
@@ -110,7 +111,7 @@ jq '.paths | keys[] | select(contains("configuration_manager"))' openapi.json
 **Test the tool directly:**
 ```bash
 # Check what inputs the tool expects
-GET /automationagency/tools/{tool_id}
+GET /flowai/tools/{tool_id}
 # Look at schema.schema.properties for the input fields
 
 # Or check the openapi spec for the underlying endpoint
@@ -179,14 +180,14 @@ If the direct call fails, the agent will fail too. Fix the inputs first, then te
 ### Step 6: Create, run, and troubleshoot
 
 ```
-1. POST /automationagency/agents → create with tools + prompts
-2. POST /automationagency/agents/{name}/call → run it
-3. GET /automationagency/missions → check the result
+1. POST /flowai/agents → create with tools + prompts
+2. POST /flowai/agents/{name}/call → run it
+3. GET /flowai/missions → check the result
 ```
 
 **When a mission fails, debug like this:**
 
-1. **Check the mission** — `GET /automationagency/missions/{id}`
+1. **Check the mission** — `GET /flowai/missions/{id}`
    - `conclusion` — what the agent said at the end (may include error details)
    - `toolStats.tools` — which tools were called and how many times
    - `tokenUsage` — if very high, the agent may be looping or confused
@@ -201,7 +202,7 @@ If the direct call fails, the agent will fail too. Fix the inputs first, then te
    The device name for getDevice is the exact name like "IOS-CAT8KV-1", not an IP address.
    ```
 
-5. **Re-run and iterate** — update the agent (`PUT /automationagency/agents/{name}`), call again, check mission again
+5. **Re-run and iterate** — update the agent (`PUT /flowai/agents/{name}`), call again, check mission again
 
 **Common issues and fixes:**
 
@@ -225,23 +226,24 @@ If the direct call fails, the agent will fail too. Fix the inputs first, then te
 
 ## API Reference
 
-**Base Path:** `/automationagency`
+**Base Path:** `/flowai`
 
 ### Agents
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| POST | `/automationagency/agents` | Create an agent |
-| GET | `/automationagency/agents` | List all agents |
-| GET | `/automationagency/agents/{agent_id}` | Get agent details |
-| PUT | `/automationagency/agents/{name}` | Update an agent |
-| DELETE | `/automationagency/agents/{agent_id}` | Delete an agent |
-| POST | `/automationagency/agents/{agent_id}/call` | Run an agent (starts a mission) |
-| POST | `/automationagency/adhoc_agent` | Run a one-off agent without saving it |
+| POST | `/flowai/agents` | Create an agent |
+| GET | `/flowai/agents` | List all agents |
+| GET | `/flowai/agents/{agent_id}` | Get agent details |
+| PUT | `/flowai/agents/{name}` | Update an agent |
+| DELETE | `/flowai/agents/{agent_id}` | Delete an agent |
+| POST | `/flowai/agents/{agent_id}/call` | Run an agent synchronously (waits for completion) |
+| POST | `/flowai/agents/{agent_id}/start` | Run an agent asynchronously (returns mission_id) |
+| POST | `/flowai/adhoc_agent` | Run a one-off agent without saving it |
 
 **Create an agent:**
 ```
-POST /automationagency/agents
+POST /flowai/agents
 ```
 ```json
 {
@@ -294,10 +296,11 @@ POST /automationagency/agents
 - `capabilities.agents` — names of other agents this agent can call (delegation)
 - `capabilities.projects` — project names the agent has access to
 - `capabilities.workflows` — workflows the agent can run directly (array of `{id, name}`)
+- `capabilities.decorators` — decorator names to apply (override tool schemas with team-specific fields/descriptions)
 
 **Call an agent:**
 ```
-POST /automationagency/agents/{agent_id}/call
+POST /flowai/agents/{agent_id}/call
 ```
 ```json
 {
@@ -310,9 +313,24 @@ POST /automationagency/agents/{agent_id}/call
 - `context` — optional key-value data passed to the agent's execution. Appended to messages or available as context.
 - Returns when the mission completes (synchronous — waits for the agent to finish)
 
+**Start an agent asynchronously:**
+```
+POST /flowai/agents/{agent_id}/start
+```
+```json
+{
+  "context": {
+    "device_list": ["IOS-CAT8KV-1", "IOS-CAT8KV-2"]
+  }
+}
+```
+- Returns immediately with the `mission_id` — does NOT wait for the agent to finish
+- Poll for results with `GET /flowai/missions/{mission_id}` or stream events with `GET /flowai/missions/{mission_id}/events`
+- Cancel a running mission with `POST /flowai/missions/{mission_id}/cancel`
+
 **Ad-hoc agent (no save):**
 ```
-POST /automationagency/adhoc_agent
+POST /flowai/adhoc_agent
 ```
 ```json
 {
@@ -328,17 +346,17 @@ Requires `default_provider` to be set in app properties.
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| GET | `/automationagency/tools` | List all discovered tools |
-| GET | `/automationagency/tools/{tool_id}` | Get tool details (schema, type) |
-| DELETE | `/automationagency/tools/{tool_id}` | Delete a tool |
-| DELETE | `/automationagency/tools` | Clear all tools |
-| POST | `/automationagency/discover/tools` | Discover tools from platform |
-| POST | `/automationagency/activate/tools` | Activate specific tools |
-| POST | `/automationagency/deactivate/tools` | Deactivate specific tools |
+| GET | `/flowai/tools` | List all discovered tools |
+| GET | `/flowai/tools/{tool_id}` | Get tool details (schema, type) |
+| DELETE | `/flowai/tools/{tool_id}` | Delete a tool |
+| DELETE | `/flowai/tools` | Clear all tools |
+| POST | `/flowai/discover/tools` | Discover tools from platform |
+| POST | `/flowai/activate/tools` | Activate specific tools |
+| POST | `/flowai/deactivate/tools` | Deactivate specific tools |
 
 **Discover tools:**
 ```
-POST /automationagency/discover/tools
+POST /flowai/discover/tools
 ```
 No body needed. Scans the platform and finds:
 - **Adapter methods** — from all running adapters (each method becomes a tool)
@@ -366,10 +384,10 @@ Each tool gets an `identifier` in the format `source//method_name`:
 
 **Activate/deactivate tools:**
 ```
-POST /automationagency/activate/tools
+POST /flowai/activate/tools
 {"tools": ["ServiceNow//createChangeRequest", "AutomationGateway//sendCommand"]}
 
-POST /automationagency/deactivate/tools
+POST /flowai/deactivate/tools
 {"tools": ["ServiceNow//createChangeRequest"]}
 ```
 
@@ -377,10 +395,12 @@ POST /automationagency/deactivate/tools
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| GET | `/automationagency/missions` | List all missions |
-| GET | `/automationagency/missions/{mission_id}` | Get mission details |
-| DELETE | `/automationagency/missions/{mission_id}` | Delete a mission |
-| DELETE | `/automationagency/missions` | Clear all missions |
+| GET | `/flowai/missions` | List all missions |
+| GET | `/flowai/missions/{mission_id}` | Get mission details |
+| GET | `/flowai/missions/{mission_id}/events` | Get mission activity events (tool calls, results, AI messages) |
+| POST | `/flowai/missions/{mission_id}/cancel` | Cancel a running mission |
+| DELETE | `/flowai/missions/{mission_id}` | Delete a mission |
+| DELETE | `/flowai/missions` | Clear all missions |
 
 **Mission structure:**
 ```json
@@ -407,23 +427,111 @@ POST /automationagency/deactivate/tools
 }
 ```
 
+**Get mission events (activity log):**
+```
+GET /flowai/missions/{mission_id}/events
+```
+Returns the chronological list of tool calls, tool results, and AI messages for the mission. Useful for debugging what the agent did step by step.
+
+**Cancel a running mission:**
+```
+POST /flowai/missions/{mission_id}/cancel
+```
+Terminates the worker thread for a running mission and marks it as failed. Use when a mission is stuck or taking too long.
+
+### Decorators
+
+Decorators override a tool's schema and description **per team or use case** — so the same underlying tool (e.g., `ServiceNow//createIncident`) can have different required fields, descriptions, and examples depending on which decorator the agent uses. This lets you reuse one adapter tool across multiple agents with team-specific constraints.
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/flowai/decorators` | List all decorators |
+| POST | `/flowai/decorators` | Create a new decorator |
+| GET | `/flowai/decorators/{name}` | Get a specific decorator |
+| PUT | `/flowai/decorators/{name}` | Update a decorator |
+| DELETE | `/flowai/decorators/{name}` | Delete a decorator |
+
+**How decorators work:**
+1. A decorator targets a specific tool via `tool` (e.g., `"ServiceNow//createIncident"`)
+2. It provides `overrides` — a replacement `description` and/or `schema` that the LLM sees instead of the tool's original
+3. An agent references decorators by name in `capabilities.decorators`
+4. When the agent runs, the decorator's overrides replace the original tool schema — the LLM sees the customized version
+
+**Create a decorator (example — adapt names, fields, and descriptions to your use case):**
+```
+POST /flowai/decorators
+```
+```json
+{
+  "details": {
+    "name": "<decorator-name>",
+    "tool": "<adapter>//< method>",
+    "overrides": {
+      "description": "<what this decorator customizes and why>",
+      "schema": {
+        "type": "object",
+        "properties": {
+          "<param>": {
+            "type": "object",
+            "properties": {
+              "<field1>": {"type": "string", "description": "<describe the field and give an example>"},
+              "<field2>": {"type": "string", "description": "<describe the field and give an example>"}
+            },
+            "additionalProperties": false,
+            "required": ["<field1>", "<field2>"]
+          }
+        },
+        "additionalProperties": false,
+        "required": ["<param>"]
+      }
+    }
+  }
+}
+```
+
+For example, a team-specific decorator for ServiceNow incidents would set `"tool": "ServiceNow//createIncident"` and override the schema to require team-specific fields like `short_description`, `caller_id`, `impact`, `urgency`, and `category` — each with description text that guides the LLM on what values to use.
+
+**Use a decorator in an agent:**
+```json
+{
+  "details": {
+    "name": "<agent-name>",
+    "capabilities": {
+      "toolset": ["<adapter>//<method>"],
+      "decorators": ["<decorator-name>"],
+      "agents": [],
+      "projects": []
+    }
+  }
+}
+```
+The agent's `capabilities.decorators` array lists decorator names. When the agent runs, the decorator's overrides replace the original tool schema so the LLM sees the customized version.
+
+**Decorator fields:**
+- `name` — unique decorator name
+- `tool` — the tool identifier this decorator applies to (e.g., `"ServiceNow//createIncident"`)
+- `overrides.description` — replacement description the LLM sees
+- `overrides.schema` — replacement JSON Schema the LLM sees (input parameters, types, required fields, examples)
+
+**CRITICAL: Decorators replace the ENTIRE tool schema.** Any field you omit from the decorator's schema will NOT be sent by the agent — even if the underlying adapter API requires it. Before creating a decorator, test the tool directly to find ALL required fields. For example, `ServiceNow//createIncident` requires `summary` in the body — if the decorator schema omits it, the call fails with a schema validation error. Always include every required field in the decorator's overrides schema.
+
 ### LLM Providers
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| GET | `/automationagency/provider-types` | List supported LLM types |
-| GET | `/automationagency/providers` | List provider instances |
-| GET | `/automationagency/providers/{name}` | Get provider instance (secrets redacted) |
-| POST | `/automationagency/providers` | Add a provider instance |
-| PUT | `/automationagency/providers/{name}` | Update a provider instance |
-| DELETE | `/automationagency/providers/{name}` | Delete a provider instance |
-| GET | `/automationagency/providers/{name}/models` | List available models for a provider |
+| GET | `/flowai/provider-types` | List supported LLM types |
+| GET | `/flowai/providers` | List provider instances |
+| GET | `/flowai/providers/{name}` | Get provider instance (secrets redacted) |
+| POST | `/flowai/providers` | Add a provider instance |
+| PUT | `/flowai/providers/{name}` | Update a provider instance |
+| DELETE | `/flowai/providers/{name}` | Delete a provider instance |
+| GET | `/flowai/providers/{name}/models` | List available models for a provider |
 
 **Supported provider types:** `claude`, `openai`, `llama` (Ollama), `databricks`
 
 **Add a Claude provider:**
 ```
-POST /automationagency/providers
+POST /flowai/providers
 ```
 ```json
 {
@@ -468,7 +576,7 @@ POST /automationagency/providers
 
 **List available models:**
 ```
-GET /automationagency/providers/Production%20Claude/models
+GET /flowai/providers/Production%20Claude/models
 ```
 Returns models available from the provider's API.
 
@@ -476,8 +584,8 @@ Returns models available from the provider's API.
 
 - Tool identifiers use `//` as separator: `adapter_name//method_name`, NOT `/` or `.`
 - Agent `identity` credentials determine what platform APIs the agent can call — the agent authenticates as that user
-- `callAgent` is synchronous — it waits for the mission to complete before returning
-- `adHocAgent` requires `default_provider` set in app properties (`PUT /applications/AutomationAgency/properties`)
+- `callAgent` is synchronous — it waits for the mission to complete before returning. Use `startAgent` for async execution
+- `adHocAgent` requires `default_provider` set in FlowAI app properties
 - Tool discovery (`POST /discover/tools`) scans ALL adapters, apps, and IAG — can generate thousands of tools
 - `capabilities.toolset` filters which discovered tools the agent can actually use — don't give agents access to everything
 - `capabilities.workflows` takes `{id, name}` objects, not just names
@@ -487,28 +595,34 @@ Returns models available from the provider's API.
 - `messages` array order matters: system prompt first, then user objective
 - `llm.overrides` can override ANY provider config (model, temperature, apiKey) per-agent
 - **"Tool names must be unique" error** — happens when multiple adapters expose methods with the same name (e.g., `getDevice` on two adapters). The LLM provider rejects duplicate tool names. Use specific tool identifiers in `capabilities.toolset` to avoid loading conflicting tools.
-- **callAgent response may be empty** — the call is async via event system. Check `GET /missions` after calling to get the result.
+- **Decorator schema replaces the ENTIRE original schema** — if you omit a required field (e.g., `summary` for ServiceNow incidents), the agent won't send it and the adapter returns a schema validation error. Always test the tool directly first to discover all required fields, then include every one in the decorator's overrides schema.
+- **callAgent response may be empty** — check `GET /flowai/missions` after calling to get the result. For async execution, use `startAgent` and poll with `GET /flowai/missions/{mission_id}` or `GET /flowai/missions/{mission_id}/events`
 
 ## Using Agents in Workflows
 
-All agent operations are available as workflow tasks under `AutomationAgency`:
+All agent operations are available as workflow tasks under `FlowAI`:
 
 | Task | Purpose | Key Inputs |
 |------|---------|------------|
-| `callAgent` | Run a saved agent | `agent_id`, `context` |
+| `callAgent` | Run a saved agent (sync) | `agent_id`, `context` |
+| `startAgent` | Run a saved agent (async) | `agent_id`, `context` |
 | `adHocAgent` | Run a one-off agent | `description`, `objective`, `tools`, `context` |
 | `listAgents` | List all agents | — |
 | `describeAgent` | Get agent details | `agent_id` |
 | `getMission` | Get mission result | `mission_id` |
+| `getMissionEvents` | Get mission activity log | `mission_id` |
+| `cancelMission` | Cancel a running mission | `mission_id` |
 | `listTools` | List available tools | — |
 | `describeTool` | Get tool schema | `tool_id` |
 | `discoverTools` | Scan platform for tools | — |
+| `listDecorators` | List all decorators | — |
+| `getDecorator` | Get decorator details | `name` |
 
 **Calling an agent from a workflow:**
 ```json
 {
   "name": "callAgent",
-  "app": "AutomationAgency",
+  "app": "FlowAI",
   "type": "operation",
   "location": "Application",
   "variables": {
@@ -581,24 +695,24 @@ The agent can call other agents by name — they appear as tools.
 
 ### 1. Set up from scratch
 ```
-1. POST /automationagency/providers              → configure LLM (Claude/OpenAI/Ollama)
-2. POST /automationagency/discover/tools          → scan platform for available tools
-3. GET  /automationagency/tools                   → review what's available
-4. POST /automationagency/agents                  → create agent with tools + prompt
-5. POST /automationagency/agents/{id}/call        → run it
-6. GET  /automationagency/missions/{id}           → check results
+1. POST /flowai/providers              → configure LLM (Claude/OpenAI/Ollama)
+2. POST /flowai/discover/tools          → scan platform for available tools
+3. GET  /flowai/tools                   → review what's available
+4. POST /flowai/agents                  → create agent with tools + prompt
+5. POST /flowai/agents/{id}/call        → run it
+6. GET  /flowai/missions/{id}           → check results
 ```
 
 ### 2. Quick test with ad-hoc agent
 ```
 1. Set default_provider in app properties
-2. POST /automationagency/adhoc_agent with description + objective + tools
+2. POST /flowai/adhoc_agent with description + objective + tools
 3. Returns mission result directly
 ```
 
 ### 3. Debug a failed mission
 ```
-1. GET /automationagency/missions/{id}            → check success, conclusion, errors
+1. GET /flowai/missions/{id}            → check success, conclusion, errors
 2. Check tokenUsage                                → did it run out of context?
 3. Check toolStats                                 → which tools were called?
 4. Check agent identity                            → does the agent user have permissions?

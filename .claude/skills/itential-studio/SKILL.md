@@ -51,7 +51,7 @@ When building a **workflow**, you drag tasks from the **task palette** onto the 
 | Tags | Tag management across platform |
 | NSOManager | Cisco NSO integration |
 | AGManager | Automation Gateway management |
-| AutomationAgency | Agent-based automation |
+| FlowAI | Agent-based automation |
 | ServiceCog | Service catalog management |
 | WorkflowBuilder | Workflow design utilities |
 | tmf-api | TMForum API integration |

@@ -379,7 +379,7 @@
         {
           "id": 4,
           "prompt": "Create a quick one-off agent to check if a device is reachable. Don't save it.",
-          "expected_output": "Uses POST /automationagency/adhoc_agent with description, objective, and tools. Notes default_provider requirement.",
+          "expected_output": "Uses POST /flowai/adhoc_agent with description, objective, and tools. Notes default_provider requirement.",
           "assertions": [
             {"text": "Uses adhoc_agent endpoint, not agents create+call", "type": "critical"},
             {"text": "Mentions default_provider must be configured", "type": "structural"},

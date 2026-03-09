@@ -12,7 +12,7 @@ assert_fail() { echo "    FAIL: $1"; FAILED=$((FAILED+1)); }
 
 check_mission() {
   local agent_name="$1"
-  curl -s -b /tmp/it-cookies "$BASE/automationagency/missions" | python3 -c "
+  curl -s -b /tmp/it-cookies "$BASE/flowai/missions" | python3 -c "
 import json,sys
 data = json.loads(sys.stdin.read(), strict=False)
 for m in sorted(data, key=lambda x: x.get('start',''), reverse=True):
@@ -50,7 +50,7 @@ echo "=== Authenticating ==="
 reauth
 echo "Done."
 
-PROVIDER=$(curl -s -b /tmp/it-cookies "$BASE/automationagency/providers" | python3 -c "
+PROVIDER=$(curl -s -b /tmp/it-cookies "$BASE/flowai/providers" | python3 -c "
 import json,sys
 for p in json.load(sys.stdin):
     if p.get('type')=='claude' and p.get('config',{}).get('hasApiKey'): print(p['name']); break" 2>/dev/null)
@@ -58,7 +58,7 @@ echo "Provider: $PROVIDER"
 [ -z "$PROVIDER" ] && echo "No Claude provider" && exit 1
 
 for n in e2e-change-agent e2e-backup-agent e2e-ops-agent; do
-  curl -s -b /tmp/it-cookies -X DELETE "$BASE/automationagency/agents/$n" > /dev/null 2>&1
+  curl -s -b /tmp/it-cookies -X DELETE "$BASE/flowai/agents/$n" > /dev/null 2>&1
 done
 sleep 1
 
@@ -72,12 +72,12 @@ cat > /tmp/fa-agent1.json << EOF
 {"details":{"name":"e2e-change-agent","description":"Creates ServiceNow change requests","identity":{"agent_account":"admin","agent_password":"admin"},"llm":{"provider":"${PROVIDER}","overrides":{"model":"claude-haiku-4-5-20251001"}},"messages":[{"role":"system","content":"You create change requests. Use createNormalChangeRequest. The change object needs short_description and description fields. Be concise."},{"role":"user","content":"Create a normal change request. short_description: E2E Test Maintenance. description: Automated test from skill evaluator."}],"capabilities":{"toolset":["ServiceNow//createNormalChangeRequest"],"agents":[],"projects":[]}}}
 EOF
 
-CREATE_ID=$(curl -s -b /tmp/it-cookies -X POST "$BASE/automationagency/agents" \
+CREATE_ID=$(curl -s -b /tmp/it-cookies -X POST "$BASE/flowai/agents" \
   -H "Content-Type: application/json" -d @/tmp/fa-agent1.json | python3 -c "import json,sys; print(json.load(sys.stdin).get('id',''))" 2>/dev/null)
 if [ -n "$CREATE_ID" ]; then assert_pass "Agent created ($CREATE_ID)"; else assert_fail "Agent creation"; fi
 
 echo "  Calling agent..."
-curl -s -b /tmp/it-cookies -X POST "$BASE/automationagency/agents/e2e-change-agent/call" \
+curl -s -b /tmp/it-cookies -X POST "$BASE/flowai/agents/e2e-change-agent/call" \
   -H "Content-Type: application/json" -d '{"context":{}}' --max-time 60 > /dev/null 2>&1
 sleep 6
 reauth
@@ -104,12 +104,12 @@ cat > /tmp/fa-agent2.json << EOF
 EOF
 
 reauth
-CREATE_ID2=$(curl -s -b /tmp/it-cookies -X POST "$BASE/automationagency/agents" \
+CREATE_ID2=$(curl -s -b /tmp/it-cookies -X POST "$BASE/flowai/agents" \
   -H "Content-Type: application/json" -d @/tmp/fa-agent2.json | python3 -c "import json,sys; print(json.load(sys.stdin).get('id',''))" 2>/dev/null)
 if [ -n "$CREATE_ID2" ]; then assert_pass "Backup agent created"; else assert_fail "Backup agent creation"; fi
 
 echo "  Calling agent..."
-curl -s -b /tmp/it-cookies -X POST "$BASE/automationagency/agents/e2e-backup-agent/call" \
+curl -s -b /tmp/it-cookies -X POST "$BASE/flowai/agents/e2e-backup-agent/call" \
   -H "Content-Type: application/json" -d '{"context":{}}' --max-time 60 > /dev/null 2>&1
 sleep 6
 reauth
@@ -136,12 +136,12 @@ cat > /tmp/fa-agent3.json << EOF
 EOF
 
 reauth
-CREATE_ID3=$(curl -s -b /tmp/it-cookies -X POST "$BASE/automationagency/agents" \
+CREATE_ID3=$(curl -s -b /tmp/it-cookies -X POST "$BASE/flowai/agents" \
   -H "Content-Type: application/json" -d @/tmp/fa-agent3.json | python3 -c "import json,sys; print(json.load(sys.stdin).get('id',''))" 2>/dev/null)
 if [ -n "$CREATE_ID3" ]; then assert_pass "Multi-tool agent created"; else assert_fail "Multi-tool agent creation"; fi
 
 echo "  Calling agent (multi-tool, may take 30-60s)..."
-curl -s -b /tmp/it-cookies -X POST "$BASE/automationagency/agents/e2e-ops-agent/call" \
+curl -s -b /tmp/it-cookies -X POST "$BASE/flowai/agents/e2e-ops-agent/call" \
   -H "Content-Type: application/json" -d '{"context":{}}' --max-time 90 > /dev/null 2>&1
 sleep 10
 reauth
@@ -165,7 +165,7 @@ echo ""
 echo "=== Cleanup ==="
 reauth
 for n in e2e-change-agent e2e-backup-agent e2e-ops-agent; do
-  curl -s -b /tmp/it-cookies -X DELETE "$BASE/automationagency/agents/$n" > /dev/null 2>&1
+  curl -s -b /tmp/it-cookies -X DELETE "$BASE/flowai/agents/$n" > /dev/null 2>&1
 done
 rm -f /tmp/fa-agent*.json /tmp/fa-r*.txt
 echo "Done."
