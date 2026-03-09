@@ -1,9 +1,20 @@
 {
-  "_comment": "Add components to a project. Valid types: workflow, template, transformation, jsonForm, mopCommandTemplate, mopAnalyticTemplate. Reference is the component name or ID. Mode: 'move' removes from global scope, 'copy' keeps a copy in global scope. WARNING: move/copy re-prefixes names and changes _id but does NOT update internal references (childJob workflow refs, template names, transformation IDs). Safe pattern: create the project first, then build inside it.",
   "components": [
-    { "type": "workflow", "reference": "", "folder": "/" },
-    { "type": "template", "reference": "", "folder": "/" },
-    { "type": "mopCommandTemplate", "reference": "", "folder": "/" }
+    {
+      "type": "workflow",
+      "reference": "",
+      "folder": "/"
+    },
+    {
+      "type": "template",
+      "reference": "",
+      "folder": "/"
+    },
+    {
+      "type": "mopCommandTemplate",
+      "reference": "",
+      "folder": "/"
+    }
   ],
   "mode": "move"
 }

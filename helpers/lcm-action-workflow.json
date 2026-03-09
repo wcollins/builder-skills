@@ -1,5 +1,4 @@
 {
-  "_comment": "Template for an LCM action workflow. CRITICAL: the workflow MUST output a job variable named 'instance' containing the resource data. Use a merge task to build the instance object from job inputs. Without 'instance' in outputSchema, the LCM action fails validation.",
   "automation": {
     "name": "",
     "type": "automation",
@@ -10,7 +9,10 @@
       "workflow_start": {
         "name": "workflow_start",
         "groups": [],
-        "nodeLocation": { "x": 300, "y": 600 }
+        "nodeLocation": {
+          "x": 300,
+          "y": 600
+        }
       },
       "a1b2": {
         "name": "merge",
@@ -25,8 +27,20 @@
         "variables": {
           "incoming": {
             "data_to_merge": [
-              { "key": "field_name", "value": { "task": "job", "variable": "input_var_name" } },
-              { "key": "status", "value": { "task": "static", "variable": "provisioned" } }
+              {
+                "key": "field_name",
+                "value": {
+                  "task": "job",
+                  "variable": "input_var_name"
+                }
+              },
+              {
+                "key": "status",
+                "value": {
+                  "task": "static",
+                  "variable": "provisioned"
+                }
+              }
             ]
           },
           "outgoing": {
@@ -38,17 +52,33 @@
         "groups": [],
         "actor": "Pronghorn",
         "scheduled": false,
-        "nodeLocation": { "x": 600, "y": 600 }
+        "nodeLocation": {
+          "x": 600,
+          "y": 600
+        }
       },
       "workflow_end": {
         "name": "workflow_end",
         "groups": [],
-        "nodeLocation": { "x": 900, "y": 600 }
+        "nodeLocation": {
+          "x": 900,
+          "y": 600
+        }
       }
     },
     "transitions": {
-      "workflow_start": { "a1b2": { "type": "standard", "state": "success" } },
-      "a1b2": { "workflow_end": { "type": "standard", "state": "success" } },
+      "workflow_start": {
+        "a1b2": {
+          "type": "standard",
+          "state": "success"
+        }
+      },
+      "a1b2": {
+        "workflow_end": {
+          "type": "standard",
+          "state": "success"
+        }
+      },
       "workflow_end": {}
     },
     "groups": [],
@@ -60,7 +90,9 @@
     "outputSchema": {
       "type": "object",
       "properties": {
-        "instance": { "type": "object" }
+        "instance": {
+          "type": "object"
+        }
       }
     }
   }

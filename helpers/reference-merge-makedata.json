@@ -1,209 +1,149 @@
 {
-  "name": "Format Report",
-  "type": "automation",
-  "canvasVersion": 3,
-  "font_size": 12,
-  "tasks": {
-    "workflow_start": {
-      "name": "workflow_start",
-      "groups": [],
-      "nodeLocation": {
-        "x": 100,
-        "y": 600
-      }
-    },
-    "a1a1": {
-      "name": "merge",
-      "canvasName": "merge",
-      "summary": "Build Template Variables",
-      "description": "",
-      "location": "Application",
-      "locationType": null,
-      "app": "WorkFlowEngine",
-      "type": "operation",
-      "displayName": "WorkFlowEngine",
-      "variables": {
-        "incoming": {
-          "data_to_merge": [
-            {
-              "key": "label",
-              "value": {
-                "task": "job",
-                "variable": "deviceLabel"
-              }
-            },
-            {
-              "key": "status",
-              "value": {
-                "task": "job",
-                "variable": "status"
-              }
-            }
-          ]
-        },
-        "outgoing": {
-          "merged_object": null
-        },
-        "error": "",
-        "decorators": []
+  "automation": {
+    "name": "Format Report",
+    "description": "Builds a formatted report from job variables using merge then makeData",
+    "type": "automation",
+    "canvasVersion": 3,
+    "encodingVersion": 1,
+    "font_size": 12,
+    "tasks": {
+      "workflow_start": {
+        "name": "workflow_start",
+        "groups": [],
+        "nodeLocation": {
+          "x": 100,
+          "y": 600
+        }
       },
-      "groups": [],
-      "actor": "Pronghorn",
-      "scheduled": false,
-      "nodeLocation": {
-        "x": 400,
-        "y": 600
-      }
-    },
-    "b2b2": {
-      "name": "makeData",
-      "canvasName": "makeData",
-      "summary": "Generate Report",
-      "description": "",
-      "location": "Application",
-      "locationType": null,
-      "app": "WorkFlowEngine",
-      "type": "operation",
-      "displayName": "WorkFlowEngine",
-      "variables": {
-        "incoming": {
-          "input": "=== REPORT ===\n<!label!>\nStatus: <!status!>\n==============",
-          "outputType": "string",
-          "variables": "$var.a1a1.merged_object"
-        },
-        "outgoing": {
-          "output": "$var.job.report"
-        },
-        "error": "",
-        "decorators": []
-      },
-      "groups": [],
-      "actor": "Pronghorn",
-      "scheduled": false,
-      "nodeLocation": {
-        "x": 700,
-        "y": 600
-      }
-    },
-    "workflow_end": {
-      "name": "workflow_end",
-      "groups": [],
-      "nodeLocation": {
-        "x": 1000,
-        "y": 600
-      }
-    }
-  },
-  "transitions": {
-    "workflow_start": {
       "a1a1": {
-        "type": "standard",
-        "state": "success"
-      }
-    },
-    "a1a1": {
+        "name": "merge",
+        "canvasName": "merge",
+        "summary": "Build Template Variables",
+        "description": "Assembles variables for makeData substitution",
+        "location": "Application",
+        "locationType": null,
+        "app": "WorkFlowEngine",
+        "type": "operation",
+        "displayName": "WorkFlowEngine",
+        "variables": {
+          "incoming": {
+            "data_to_merge": [
+              {
+                "key": "label",
+                "value": {
+                  "task": "job",
+                  "variable": "deviceLabel"
+                }
+              },
+              {
+                "key": "status",
+                "value": {
+                  "task": "job",
+                  "variable": "status"
+                }
+              }
+            ]
+          },
+          "outgoing": {
+            "merged_object": null
+          },
+          "error": "",
+          "decorators": []
+        },
+        "groups": [],
+        "actor": "Pronghorn",
+        "scheduled": false,
+        "nodeLocation": {
+          "x": 400,
+          "y": 600
+        }
+      },
       "b2b2": {
-        "type": "standard",
-        "state": "success"
-      }
-    },
-    "b2b2": {
+        "name": "makeData",
+        "canvasName": "makeData",
+        "summary": "Generate Report",
+        "description": "Builds formatted report string",
+        "location": "Application",
+        "locationType": null,
+        "app": "WorkFlowEngine",
+        "type": "operation",
+        "displayName": "WorkFlowEngine",
+        "variables": {
+          "incoming": {
+            "input": "=== REPORT ===\n<!label!>\nStatus: <!status!>\n==============",
+            "outputType": "string",
+            "variables": "$var.a1a1.merged_object"
+          },
+          "outgoing": {
+            "output": "$var.job.report"
+          },
+          "error": "",
+          "decorators": []
+        },
+        "groups": [],
+        "actor": "Pronghorn",
+        "scheduled": false,
+        "nodeLocation": {
+          "x": 700,
+          "y": 600
+        }
+      },
       "workflow_end": {
-        "type": "standard",
-        "state": "success"
+        "name": "workflow_end",
+        "groups": [],
+        "nodeLocation": {
+          "x": 1000,
+          "y": 600
+        }
       }
     },
-    "workflow_end": {}
-  },
-  "inputSchema": {
-    "type": "object",
-    "properties": {
-      "deviceLabel": {
-        "type": [
-          "array",
-          "boolean",
-          "null",
-          "number",
-          "object",
-          "string"
-        ]
+    "transitions": {
+      "workflow_start": {
+        "a1a1": {
+          "type": "standard",
+          "state": "success"
+        }
       },
-      "status": {
-        "type": [
-          "array",
-          "boolean",
-          "null",
-          "number",
-          "object",
-          "string"
-        ]
-      }
+      "a1a1": {
+        "b2b2": {
+          "type": "standard",
+          "state": "success"
+        }
+      },
+      "b2b2": {
+        "workflow_end": {
+          "type": "standard",
+          "state": "success"
+        }
+      },
+      "workflow_end": {}
     },
-    "required": [
-      "deviceLabel",
-      "status"
-    ]
-  },
-  "outputSchema": {
-    "type": "object",
-    "properties": {
-      "deviceLabel": {
-        "type": [
-          "array",
-          "boolean",
-          "null",
-          "number",
-          "object",
-          "string"
-        ]
+    "groups": [],
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "deviceLabel": {
+          "title": "deviceLabel",
+          "type": "string"
+        },
+        "status": {
+          "title": "status",
+          "type": "string"
+        }
       },
-      "status": {
-        "type": [
-          "array",
-          "boolean",
-          "null",
-          "number",
-          "object",
-          "string"
-        ]
-      },
-      "_id": {
-        "type": "string",
-        "pattern": "^[0-9a-f]{24}$"
-      },
-      "initiator": {
-        "type": "string"
-      },
-      "report": {
-        "title": "output",
-        "type": [
-          "array",
-          "string",
-          "boolean",
-          "number",
-          "object"
-        ]
+      "required": [
+        "deviceLabel",
+        "status"
+      ]
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "report": {
+          "title": "report",
+          "type": "string"
+        }
       }
     }
-  },
-  "last_updated": "2026-03-05T05:49:43.533Z",
-  "last_updated_by": {
-    "firstname": "admin",
-    "inactive": false,
-    "provenance": "Pronghorn",
-    "username": "admin"
-  },
-  "lastUpdatedVersion": "5.55.5",
-  "uuid": "50121f53-a668-4a8e-8c91-726f32b30cb2",
-  "created_by": {
-    "firstname": "admin",
-    "inactive": false,
-    "provenance": "Pronghorn",
-    "username": "admin"
-  },
-  "createdVersion": "5.55.5",
-  "scenarios": [],
-  "tags": [],
-  "groups": [],
-  "migrationVersion": 7
+  }
 }

@@ -30,7 +30,7 @@ spec-files/spec-port-turn-up.md        ← Generic template (never modified)
         │
         │  Fork + customize
         ▼
-{use-case}/spec.md                     ← Customer's spec → GATE 1: engineer approves
+{use-case}/{use-case}-spec.md                     ← Customer's spec → GATE 1: engineer approves
         │
         │  Resolve against environment
         ▼
@@ -41,7 +41,7 @@ spec-files/spec-port-turn-up.md        ← Generic template (never modified)
 {use-case}/*.json                      ← Built assets (workflows, templates, etc.)
 ```
 
-**When the customer wants to change something later:** modify `{use-case}/spec.md` and re-run.
+**When the customer wants to change something later:** modify `{use-case}/{use-case}-spec.md` and re-run.
 
 ---
 
@@ -68,11 +68,11 @@ Section 7 has three parts:
 
 ## Phase 1: DISCOVER
 
-**Entered from `/itential-setup` after auth and heavy bootstrap are done.** The working directory exists with all data pulled. **Do NOT make additional API calls. Read local files.**
+**Entered from `/itential-setup` after auth and environment discovery are done.** The working directory exists with all data pulled. **Do NOT make additional API calls. Read local files.**
 
 ### 1A. Read the Customer Spec
 
-The spec was forked to `{use-case}/spec.md` during setup. Read it and extract:
+The spec was forked to `{use-case}/{use-case}-spec.md` during setup. Read it and extract:
 - **Phases** from Section 3 (workflow stages)
 - **Design decisions** from Section 4 (constraints)
 - **Capabilities** table from Section 7 (platform checks)
@@ -97,7 +97,7 @@ Read local files — do not call the API:
 
 Ask: *"Do you have existing documentation I should follow? Naming conventions, change policies, runbooks, config standards?"*
 
-Capture in `{use-case}/customer-context.md` if provided. If not, move on.
+Write to `{use-case}/customer-context.md` using the Write tool if provided. If not, move on.
 
 ### 1D. Ask Only What Data Can't Answer
 
@@ -109,7 +109,7 @@ Present what you found alongside remaining questions.
 
 ### 1E. Update the Customer Spec
 
-Incorporate ALL engineer input into `{use-case}/spec.md`:
+Incorporate ALL engineer input into `{use-case}/{use-case}-spec.md`:
 - Added requirements → update Section 7
 - Changed scope → update Section 5
 - Business rules → add to relevant sections
@@ -137,7 +137,7 @@ The engineer may:
 - Change decisions ("auto-rollback, not manual review")
 - Adjust acceptance criteria
 
-Update `{use-case}/spec.md` with every change.
+Update `{use-case}/{use-case}-spec.md` with every change.
 
 **When the engineer approves: the spec is locked.** This is what the solution design will be based on. Save the file.
 
@@ -168,7 +168,7 @@ Search `workflows.json` for existing workflows that match spec phases. Flag as *
 
 ### Step 4: Produce the Solution Design
 
-Generate `{use-case}/solution-design.md` with:
+**Write the file to disk** at `{use-case}/solution-design.md` using the Write tool. Contents:
 
 **A. Environment Summary** — one paragraph
 
@@ -227,7 +227,7 @@ The engineer may:
 Update `{use-case}/solution-design.md` with every change.
 
 **When the engineer approves: the design is locked.** Both documents are saved before any building begins:
-1. `{use-case}/spec.md` — what they asked for
+1. `{use-case}/{use-case}-spec.md` — what they asked for
 2. `{use-case}/solution-design.md` — how it gets built
 
 ---
@@ -238,20 +238,18 @@ Execute the locked plan step by step.
 
 ### For Each Step
 
-1. **Invoke the skill using the Skill tool** — before building any asset, load the relevant skill:
-   - Create workflows, templates, projects → invoke `/itential-studio`
-   - Run/test workflows, utility tasks, wiring patterns → invoke `/itential-workflow-engine`
-   - Command templates, analytic templates → invoke `/itential-mop`
-   - Devices, backups, diffs, device groups → invoke `/itential-devices`
-   - Golden config, compliance → invoke `/itential-golden-config`
-   - IAG services → invoke `/iag`
-   **You MUST invoke the skill before making API calls. Do not guess.**
+1. **Invoke `/itential-builder`** — this single skill covers projects, workflows, templates (Jinja2/TextFSM), command templates (MOP), running jobs, and debugging. Load it once at the start of the build phase.
+   - For device-specific operations (backups, diffs, device groups) → invoke `/itential-devices`
+   - For compliance (golden config, compliance plans) → invoke `/itential-golden-config`
+   - For IAG services → invoke `/iag`
+   **Only load additional skills if the design requires their specific domain.**
 2. **Start from a helper template** — read the matching file from `helpers/` first, then modify:
-   - Command template → `helpers/create-command-template.json` (see `/itential-mop`)
+   - Command template → `helpers/create-command-template.json`
    - Jinja2 template → `helpers/create-template-jinja2.json`
    - Workflow → `helpers/create-workflow.json` + `helpers/workflow-task-application.json` / `helpers/workflow-task-adapter.json`
-   - childJob task → `helpers/workflow-task-childjob.json` (see `/itential-workflow-engine`)
+   - childJob task → `helpers/workflow-task-childjob.json`
    - Project → `helpers/create-project.json` + `helpers/add-components-to-project.json`
+   All helper details are in `/itential-builder`.
    **Do NOT build JSON from scratch. Helpers have correct structure and field names.**
 3. **Save locally** — write JSON to `{use-case}/` before sending to the platform
 4. **Create on platform** — POST to the API
@@ -272,39 +270,15 @@ Execute the locked plan step by step.
 - `$var.job.x` only resolves as a direct top-level incoming variable value
 - `$var` inside nested objects does NOT resolve — use `merge`, `makeData`, `query`, or other utility tasks to build the object, then pass it as a top-level `$var` reference
 
-**childJob:**
-- `actor` must be `"job"` not `"Pronghorn"`
-- Variables: `{"task": "job", "value": "varName"}` syntax, NOT `$var.job.x`
-- Empty optionals: `""` not `null`
+All build patterns, wiring rules, testing, and debugging details are in `/itential-builder`. Key reminders:
 
-**evaluation:**
-- MUST have both `success` AND `failure` transitions
-
-**Error handling:**
-- Every adapter/external task needs an error transition — without it, errors produce "Job has no available transitions" and the job gets stuck
-- Use try-catch: `newVariable` on both success and error paths
-
-**Adapter naming:**
-- `app` from `apps.json` (bootstrapped locally), NOT `tasks/list` — names can be completely different, not just casing
-- `adapter_id` from `adapters.json` instance name
-- Some products have multiple adapter apps — check `apps.json` and `environment.md` to resolve, ask the user when multiple options exist
-
-**Network device config:**
-- MOP command templates → checks and validation ONLY (show commands + rules)
-- Jinja2 templates → generate config to push
-- Push via existing workflow or `itential_cli` task — ask engineer which method
-- Test CLI commands on the actual device BEFORE building workflows
-
-**Testing:**
-- Command templates: `POST /mop/RunCommandTemplate`
-- Jinja2 templates: `POST /template_builder/templates/{name}/renderJinja` with `{"context":{...}}`
-- Workflows: `POST /operations-manager/jobs/start`, check with `GET /operations-manager/jobs/{id}`
-- **Always review actual task output** — `status: complete` doesn't mean CLI worked
-
-**Iterating:**
-- Keep all JSON locally in `{use-case}/`
-- Edit local file, `PUT /automation-studio/automations/{id}` with `{"update": {...}}`
-- Don't delete and recreate — updating preserves IDs
+- **childJob:** `actor: "job"`, variables use `{"task":"job","value":"varName"}` NOT `$var`
+- **merge:** uses `"variable"` NOT `"value"` (different from childJob)
+- **evaluation:** MUST have both `success` AND `failure` transitions
+- **Error transitions:** mandatory on every adapter/external task
+- **Adapter `app`:** from `apps.json`, NOT `tasks/list`
+- **Testing:** `POST /operations-manager/jobs/start`, check `job.error` for failures
+- **Iterating:** edit local JSON, `PUT` to update — don't recreate
 
 ### On Completion
 
@@ -312,7 +286,7 @@ The `{use-case}/` directory contains everything:
 
 | File | Purpose |
 |------|---------|
-| `spec.md` | Customer's spec — approved at Gate 1 |
+| `{use-case}-spec.md` | Customer's spec — approved at Gate 1 |
 | `solution-design.md` | Implementation plan — approved at Gate 2 |
 | `customer-context.md` | Business rules, naming conventions (if provided) |
 | `openapi.json` | Platform API reference |
@@ -335,8 +309,8 @@ Deliver:
 
 Entered from `/itential-setup` when the engineer chooses "Build from a spec." By that point:
 - Auth done
-- Spec forked to `{use-case}/spec.md`
-- Heavy bootstrap done (all data in local files)
+- Spec forked to `{use-case}/{use-case}-spec.md`
+- Environment data pulled (all data in local files)
 
 ```
 /solution-design flow:
@@ -350,4 +324,4 @@ Entered from `/itential-setup` when the engineer chooses "Build from a spec." By
     8. Plan + build everything
 ```
 
-To modify later: update `{use-case}/spec.md` → re-run from Gate 1.
+To modify later: update `{use-case}/{use-case}-spec.md` → re-run from Gate 1.

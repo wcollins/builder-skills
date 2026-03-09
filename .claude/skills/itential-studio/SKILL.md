@@ -1,6 +1,6 @@
 ---
 name: itential-studio
-description: Create and manage Itential workflows, templates, and projects. Discover tasks from the palette and get schemas. For running workflows and utility tasks, use /itential-workflow-engine. For command templates, use /itential-mop.
+description: Create and manage Itential workflows, templates, and projects. Discover tasks from the palette and get schemas. For running workflows and utility tasks, use /itential-builder. For command templates, use /itential-mop.
 argument-hint: "[action or use-case]"
 ---
 
@@ -51,7 +51,7 @@ When building a **workflow**, you drag tasks from the **task palette** onto the 
 | Tags | Tag management across platform |
 | NSOManager | Cisco NSO integration |
 | AGManager | Automation Gateway management |
-| AutomationAgency | Agent-based automation |
+| FlowAI | Agent-based automation |
 | ServiceCog | Service catalog management |
 | WorkflowBuilder | Workflow design utilities |
 | tmf-api | TMForum API integration |
@@ -295,7 +295,7 @@ PATCH /automation-studio/projects/{projectId}
 
 Workflows are the core automation artifacts. Each workflow is a directed graph of tasks connected by transitions on a visual canvas.
 
-> **For running workflows, utility task patterns (childJob, forEach, evaluation), error handling, and $var resolution rules, invoke `/itential-workflow-engine`.**
+> **For running workflows, utility task patterns (childJob, forEach, evaluation), error handling, and $var resolution rules, invoke `/itential-builder`.**
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
@@ -461,7 +461,7 @@ The body wraps the workflow in `{"automation": {...}}`. Required fields:
 | WorkFlowEngine | `toUpperCase` | Convert string to uppercase | `str` -> `uppercaseString` |
 | WorkFlowEngine | `arrayConcat` | Merge two arrays | `arr` (first), `arrayN` (second) -> `combinedArray` |
 | WorkFlowEngine | `ViewData` | Display data for manual inspection | data variables |
-| WorkFlowEngine | `merge` | Merge key-value pairs into a single object | `data_to_merge` (array of `{key, value}` pairs) -> `merged_object` |
+| WorkFlowEngine | `merge` | Merge key-value pairs into a single object | `data_to_merge` (array of `{key, value}` where inner `value` is `{"task":"...", "variable":"..."}` — field is `variable` NOT `value`) -> `merged_object` |
 | WorkFlowEngine | `deepmerge` | Deep merge using extend | `data_to_merge` -> `merged_object` |
 | WorkFlowEngine | `makeData` | Convert input to a different data type with variable substitution | `input` (string with `<!var!>` placeholders), `outputType` (boolean/json/number/string), `variables` -> `output` |
 | WorkFlowEngine | `parse` | Parse a JSON string into an object | `text` (JSON string) -> `textObject` |
@@ -632,9 +632,26 @@ templates = json.loads(clean)
 | Command templates (MOP) | `<!var!>` | `show interface <!interface!>` |
 | `makeData` input | `<!var!>` | `{"name": "<!name!>", "ip": "<!ipaddress!>"}` |
 | Workflow variable refs | `$var.job.x` or `$var.taskId.x` | `$var.job.deviceName` |
-| childJob/merge refs | `{"task":"job","value":"varName"}` | `{"task": "static", "value": ["a"]}` |
+| childJob variable refs | `{"task":"job","value":"varName"}` | `{"task": "static", "value": ["a"]}` |
+| merge/evaluation refs | `{"task":"job","variable":"varName"}` | `{"task": "static", "variable": "success"}` |
 
 **Template names:** Use underscores or simple characters in template names (e.g., `IOS_Switchport_Config`). The `name` field is used by `TemplateBuilder.renderJinjaTemplate` to look up the template at runtime.
+
+**Error transitions are mandatory on adapter tasks.** Without an error transition, task errors cause "Job has no available transitions" and the job gets stuck forever. Every adapter task MUST have both a `success` and `error` transition:
+```json
+"a1": {
+  "b2": {"type": "standard", "state": "success"},
+  "err1": {"type": "standard", "state": "error"}
+}
+```
+**JSON duplicate key problem:** If both success and error need to go to `workflow_end`, you can't use `workflow_end` twice as a JSON key. Route the error to an intermediate task (e.g., a `newVariable` task that sets an error flag), then route that task to `workflow_end`.
+
+**Adapter responses are transformed.** Don't assume the upstream API's native response shape. For example, ServiceNow's Table API returns `result.sys_id`, but the Itential ServiceNow adapter flattens it to `response.id`. Always verify adapter response shapes by calling the adapter endpoint directly or checking `openapi.json` before wiring query paths.
+
+**Endpoint base paths differ for task discovery vs. task schemas:**
+- Task catalog: `GET /workflow_builder/tasks/list`
+- Task schemas: `GET /automation-studio/locations/{loc}/packages/{pkg}/tasks/{method}` or `POST /automation-studio/multipleTaskDetails`
+- Do NOT use `/workflow_builder/multipleTaskDetails` — it doesn't exist (returns HTML 404)
 
 
 ## Bootstrap Output

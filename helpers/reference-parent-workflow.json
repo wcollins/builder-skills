@@ -1,434 +1,267 @@
 {
-  "name": "Device Report",
-  "type": "automation",
-  "canvasVersion": 3,
-  "font_size": 12,
-  "tasks": {
-    "workflow_start": {
-      "name": "workflow_start",
-      "groups": [],
-      "nodeLocation": {
-        "x": 50,
-        "y": 600
-      }
-    },
-    "a100": {
-      "name": "childJob",
-      "canvasName": "childJob",
-      "summary": "Get Device Info",
-      "description": "",
-      "location": "Application",
-      "locationType": null,
-      "app": "WorkFlowEngine",
-      "type": "operation",
-      "displayName": "WorkFlowEngine",
-      "variables": {
-        "incoming": {
-          "task": "",
-          "workflow": "@69a9197764f1bcc66f5c0cec: Device Info",
-          "variables": {
-            "deviceName": {
-              "task": "job",
-              "value": "deviceName"
-            }
-          },
-          "data_array": "",
-          "transformation": "",
-          "loopType": ""
-        },
-        "outgoing": {
-          "job_details": null
-        },
-        "error": "",
-        "decorators": []
+  "automation": {
+    "name": "Parent - Check Device",
+    "description": "Runs child workflow, checks result, sets status",
+    "type": "automation",
+    "canvasVersion": 3,
+    "encodingVersion": 1,
+    "font_size": 12,
+    "tasks": {
+      "workflow_start": {
+        "name": "workflow_start",
+        "groups": [],
+        "nodeLocation": {
+          "x": 50,
+          "y": 600
+        }
       },
-      "groups": [],
-      "actor": "job",
-      "scheduled": false,
-      "nodeLocation": {
-        "x": 250,
-        "y": 600
-      }
-    },
-    "b200": {
-      "name": "query",
-      "canvasName": "query",
-      "summary": "Extract Device Label",
-      "description": "",
-      "location": "Application",
-      "locationType": null,
-      "app": "WorkFlowEngine",
-      "type": "operation",
-      "displayName": "WorkFlowEngine",
-      "variables": {
-        "incoming": {
-          "pass_on_null": false,
-          "query": "deviceLabel",
-          "obj": "$var.a100.job_details"
-        },
-        "outgoing": {
-          "return_data": "$var.job.deviceLabel"
-        },
-        "error": "",
-        "decorators": []
-      },
-      "groups": [],
-      "actor": "Pronghorn",
-      "scheduled": false,
-      "nodeLocation": {
-        "x": 450,
-        "y": 600
-      }
-    },
-    "c300": {
-      "name": "evaluation",
-      "canvasName": "evaluation",
-      "summary": "Check Device Name",
-      "description": "",
-      "location": "Application",
-      "locationType": null,
-      "app": "WorkFlowEngine",
-      "type": "operation",
-      "displayName": "WorkFlowEngine",
-      "variables": {
-        "incoming": {
-          "all_true_flag": true,
-          "evaluation_groups": [
-            {
-              "all_true_flag": true,
-              "evaluations": [
-                {
-                  "operand_1": {
-                    "task": "job",
-                    "variable": "deviceLabel"
-                  },
-                  "operand_2": {
-                    "task": "static",
-                    "variable": "IOS"
-                  },
-                  "operator": "contains",
-                  "query": "",
-                  "rightQuery": ""
-                }
-              ]
-            }
-          ]
-        },
-        "outgoing": {
-          "return_value": null
-        },
-        "error": "",
-        "decorators": []
-      },
-      "groups": [],
-      "actor": "Pronghorn",
-      "scheduled": false,
-      "nodeLocation": {
-        "x": 650,
-        "y": 600
-      }
-    },
-    "d401": {
-      "name": "newVariable",
-      "canvasName": "newVariable",
-      "summary": "Set Cisco Status",
-      "description": "",
-      "location": "Application",
-      "locationType": null,
-      "app": "WorkFlowEngine",
-      "type": "operation",
-      "displayName": "WorkFlowEngine",
-      "variables": {
-        "incoming": {
-          "name": "deviceStatus",
-          "value": "SUPPORTED"
-        },
-        "outgoing": {
-          "value": null
-        },
-        "error": "",
-        "decorators": []
-      },
-      "groups": [],
-      "actor": "Pronghorn",
-      "scheduled": false,
-      "nodeLocation": {
-        "x": 850,
-        "y": 500
-      }
-    },
-    "d402": {
-      "name": "newVariable",
-      "canvasName": "newVariable",
-      "summary": "Set Non-Cisco Status",
-      "description": "",
-      "location": "Application",
-      "locationType": null,
-      "app": "WorkFlowEngine",
-      "type": "operation",
-      "displayName": "WorkFlowEngine",
-      "variables": {
-        "incoming": {
-          "name": "deviceStatus",
-          "value": "UNSUPPORTED"
-        },
-        "outgoing": {
-          "value": null
-        },
-        "error": "",
-        "decorators": []
-      },
-      "groups": [],
-      "actor": "Pronghorn",
-      "scheduled": false,
-      "nodeLocation": {
-        "x": 850,
-        "y": 700
-      }
-    },
-    "e500": {
-      "name": "childJob",
-      "canvasName": "childJob",
-      "summary": "Format Report",
-      "description": "",
-      "location": "Application",
-      "locationType": null,
-      "app": "WorkFlowEngine",
-      "type": "operation",
-      "displayName": "WorkFlowEngine",
-      "variables": {
-        "incoming": {
-          "task": "",
-          "workflow": "@69a9197764f1bcc66f5c0cec: Format Report",
-          "variables": {
-            "deviceLabel": {
-              "task": "job",
-              "value": "deviceLabel"
+      "a1a1": {
+        "name": "childJob",
+        "canvasName": "childJob",
+        "summary": "Get Device Info",
+        "description": "Runs the child workflow to get device info",
+        "location": "Application",
+        "locationType": null,
+        "app": "WorkFlowEngine",
+        "type": "operation",
+        "displayName": "WorkFlowEngine",
+        "variables": {
+          "incoming": {
+            "task": "",
+            "workflow": "Child - Device Action",
+            "variables": {
+              "deviceName": {
+                "task": "job",
+                "value": "deviceName"
+              }
             },
-            "status": {
-              "task": "job",
-              "value": "deviceStatus"
-            }
+            "data_array": "",
+            "transformation": "",
+            "loopType": ""
           },
-          "data_array": "",
-          "transformation": "",
-          "loopType": ""
+          "outgoing": {
+            "job_details": null
+          },
+          "error": "",
+          "decorators": []
         },
-        "outgoing": {
-          "job_details": null
-        },
-        "error": "",
-        "decorators": []
+        "groups": [],
+        "actor": "job",
+        "scheduled": false,
+        "nodeLocation": {
+          "x": 250,
+          "y": 600
+        }
       },
-      "groups": [],
-      "actor": "job",
-      "scheduled": false,
-      "nodeLocation": {
-        "x": 1050,
-        "y": 600
-      }
-    },
-    "f600": {
-      "name": "query",
-      "canvasName": "query",
-      "summary": "Extract Final Report",
-      "description": "",
-      "location": "Application",
-      "locationType": null,
-      "app": "WorkFlowEngine",
-      "type": "operation",
-      "displayName": "WorkFlowEngine",
-      "variables": {
-        "incoming": {
-          "pass_on_null": false,
-          "query": "report",
-          "obj": "$var.e500.job_details"
+      "b2b2": {
+        "name": "query",
+        "canvasName": "query",
+        "summary": "Extract Child Status",
+        "description": "Gets taskStatus from child job output",
+        "location": "Application",
+        "locationType": null,
+        "app": "WorkFlowEngine",
+        "type": "operation",
+        "displayName": "WorkFlowEngine",
+        "variables": {
+          "incoming": {
+            "pass_on_null": false,
+            "query": "taskStatus",
+            "obj": "$var.a1a1.job_details"
+          },
+          "outgoing": {
+            "return_data": "$var.job.childStatus"
+          },
+          "error": "",
+          "decorators": []
         },
-        "outgoing": {
-          "return_data": "$var.job.finalReport"
+        "groups": [],
+        "actor": "Pronghorn",
+        "scheduled": false,
+        "nodeLocation": {
+          "x": 500,
+          "y": 600
+        }
+      },
+      "c3c3": {
+        "name": "evaluation",
+        "canvasName": "evaluation",
+        "summary": "Check Child Status",
+        "description": "Checks if child completed successfully",
+        "location": "Application",
+        "locationType": null,
+        "app": "WorkFlowEngine",
+        "type": "operation",
+        "displayName": "WorkFlowEngine",
+        "variables": {
+          "incoming": {
+            "all_true_flag": true,
+            "evaluation_groups": [
+              {
+                "all_true_flag": true,
+                "evaluations": [
+                  {
+                    "operand_1": {
+                      "task": "job",
+                      "variable": "childStatus"
+                    },
+                    "operator": "==",
+                    "operand_2": {
+                      "task": "static",
+                      "variable": "success"
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          "outgoing": {
+            "return_value": null
+          },
+          "error": "",
+          "decorators": []
         },
-        "error": "",
-        "decorators": []
+        "groups": [],
+        "actor": "Pronghorn",
+        "scheduled": false,
+        "nodeLocation": {
+          "x": 750,
+          "y": 600
+        }
       },
-      "groups": [],
-      "actor": "Pronghorn",
-      "scheduled": false,
-      "nodeLocation": {
-        "x": 1250,
-        "y": 600
-      }
-    },
-    "workflow_end": {
-      "name": "workflow_end",
-      "groups": [],
-      "nodeLocation": {
-        "x": 1450,
-        "y": 600
-      }
-    }
-  },
-  "transitions": {
-    "workflow_start": {
-      "a100": {
-        "type": "standard",
-        "state": "success"
-      }
-    },
-    "a100": {
-      "b200": {
-        "type": "standard",
-        "state": "success"
-      }
-    },
-    "b200": {
-      "c300": {
-        "type": "standard",
-        "state": "success"
-      }
-    },
-    "c300": {
-      "d401": {
-        "type": "standard",
-        "state": "success"
+      "d4d4": {
+        "name": "newVariable",
+        "canvasName": "newVariable",
+        "summary": "Set Success",
+        "description": "Sets finalStatus to completed",
+        "location": "Application",
+        "locationType": null,
+        "app": "WorkFlowEngine",
+        "type": "operation",
+        "displayName": "WorkFlowEngine",
+        "variables": {
+          "incoming": {
+            "name": "finalStatus",
+            "value": "completed"
+          },
+          "outgoing": {
+            "value": "$var.job.finalStatus"
+          },
+          "error": "",
+          "decorators": []
+        },
+        "groups": [],
+        "actor": "Pronghorn",
+        "scheduled": false,
+        "nodeLocation": {
+          "x": 1000,
+          "y": 500
+        }
       },
-      "d402": {
-        "type": "standard",
-        "state": "failure"
-      }
-    },
-    "d401": {
-      "e500": {
-        "type": "standard",
-        "state": "success"
-      }
-    },
-    "d402": {
-      "e500": {
-        "type": "standard",
-        "state": "success"
-      }
-    },
-    "e500": {
-      "f600": {
-        "type": "standard",
-        "state": "success"
-      }
-    },
-    "f600": {
+      "e5e5": {
+        "name": "newVariable",
+        "canvasName": "newVariable",
+        "summary": "Set Failure",
+        "description": "Sets finalStatus to failed",
+        "location": "Application",
+        "locationType": null,
+        "app": "WorkFlowEngine",
+        "type": "operation",
+        "displayName": "WorkFlowEngine",
+        "variables": {
+          "incoming": {
+            "name": "finalStatus",
+            "value": "failed"
+          },
+          "outgoing": {
+            "value": "$var.job.finalStatus"
+          },
+          "error": "",
+          "decorators": []
+        },
+        "groups": [],
+        "actor": "Pronghorn",
+        "scheduled": false,
+        "nodeLocation": {
+          "x": 1000,
+          "y": 700
+        }
+      },
       "workflow_end": {
-        "type": "standard",
-        "state": "success"
+        "name": "workflow_end",
+        "groups": [],
+        "nodeLocation": {
+          "x": 1250,
+          "y": 600
+        }
       }
     },
-    "workflow_end": {}
-  },
-  "inputSchema": {
-    "type": "object",
-    "properties": {
-      "deviceName": {
-        "title": "str",
-        "type": "string",
-        "examples": [
-          "nokia sr-os"
-        ]
-      }
+    "transitions": {
+      "workflow_start": {
+        "a1a1": {
+          "type": "standard",
+          "state": "success"
+        }
+      },
+      "a1a1": {
+        "b2b2": {
+          "type": "standard",
+          "state": "success"
+        }
+      },
+      "b2b2": {
+        "c3c3": {
+          "type": "standard",
+          "state": "success"
+        }
+      },
+      "c3c3": {
+        "d4d4": {
+          "type": "standard",
+          "state": "success"
+        },
+        "e5e5": {
+          "type": "standard",
+          "state": "failure"
+        }
+      },
+      "d4d4": {
+        "workflow_end": {
+          "type": "standard",
+          "state": "success"
+        }
+      },
+      "e5e5": {
+        "workflow_end": {
+          "type": "standard",
+          "state": "success"
+        }
+      },
+      "workflow_end": {}
     },
-    "required": [
-      "deviceName"
-    ]
-  },
-  "outputSchema": {
-    "type": "object",
-    "properties": {
-      "deviceName": {
-        "title": "str",
-        "type": "string",
-        "examples": [
-          "nokia sr-os"
-        ]
+    "groups": [],
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "deviceName": {
+          "title": "deviceName",
+          "type": "string"
+        }
       },
-      "_id": {
-        "type": "string",
-        "pattern": "^[0-9a-f]{24}$"
-      },
-      "initiator": {
-        "type": "string"
-      },
-      "deviceLabel": {
-        "title": "return_data",
-        "oneOf": [
-          {
-            "type": "string"
-          },
-          {
-            "type": "number"
-          },
-          {
-            "type": "object"
-          },
-          {
-            "type": "array"
-          },
-          {
-            "type": "boolean"
-          },
-          {
-            "type": "null"
-          }
-        ],
-        "examples": [
-          "Cisco"
-        ]
-      },
-      "deviceStatus": {
-        "type": "string"
-      },
-      "finalReport": {
-        "title": "return_data",
-        "oneOf": [
-          {
-            "type": "string"
-          },
-          {
-            "type": "number"
-          },
-          {
-            "type": "object"
-          },
-          {
-            "type": "array"
-          },
-          {
-            "type": "boolean"
-          },
-          {
-            "type": "null"
-          }
-        ],
-        "examples": [
-          "Cisco"
-        ]
+      "required": [
+        "deviceName"
+      ]
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "childStatus": {
+          "type": "string"
+        },
+        "finalStatus": {
+          "type": "string"
+        }
       }
     }
-  },
-  "last_updated": "2026-03-05T05:49:43.533Z",
-  "last_updated_by": {
-    "firstname": "admin",
-    "inactive": false,
-    "provenance": "Pronghorn",
-    "username": "admin"
-  },
-  "lastUpdatedVersion": "5.55.5",
-  "uuid": "ddb74170-172c-4c72-a223-607b7f2af104",
-  "created_by": {
-    "firstname": "admin",
-    "inactive": false,
-    "provenance": "Pronghorn",
-    "username": "admin"
-  },
-  "createdVersion": "5.55.5",
-  "scenarios": [],
-  "tags": [],
-  "groups": [],
-  "migrationVersion": 7
+  }
 }

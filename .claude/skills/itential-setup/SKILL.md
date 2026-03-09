@@ -6,18 +6,18 @@ argument-hint: "[use-case-name]"
 
 # Itential Setup — Connect and Go
 
-This is the entry point. Authenticate, choose your path, then the right amount of discovery happens automatically.
+This is the entry point. Authenticate, discover the environment, then build.
 
 ```
 /itential-setup
     │
-    ├── Step 1: Auth only (instant)
+    ├── Step 1: Authenticate
     │
-    ├── Step 2: "Ad-hoc or spec-based?"
+    ├── Step 2: "Exploring or building from a spec?"
     │     │
-    │     ├── Ad-hoc → Light bootstrap → Explore with skills
+    │     ├── Exploring → Pull platform data → Use skills as needed
     │     │
-    │     └── Spec-based → Pick spec → Heavy bootstrap → Solution design flow
+    │     └── Spec-based → Pick spec → Pull platform data → Review spec → /solution-design
     │
     └── Already set up? → Reuse existing working directory
 ```
@@ -86,9 +86,44 @@ GET /health/adapters
 Authorization: Bearer eyJhbG...
 ```
 
+### Token Persistence
+
+**After successful authentication, save the token locally so all skills can reuse it:**
+
+```bash
+# After login/oauth, write auth details to the use-case directory
+cat > {use-case}/.auth.json << EOF
+{
+  "platform_url": "https://platform.example.com",
+  "auth_method": "oauth",
+  "token": "eyJhbG...",
+  "timestamp": "2026-03-08T10:00:00Z"
+}
+EOF
+```
+
+**Every skill should check for `.auth.json` before making API calls:**
+1. Check `{use-case}/.auth.json` — if it exists, read the token and platform URL
+2. Make the API call with the stored token
+3. If the call returns an auth error (401/403), re-authenticate using `.env` credentials and update `.auth.json`
+4. Never ask the user for credentials again if `.env` exists
+
+**Building the curl command from `.auth.json`:**
+```bash
+# OAuth (cloud) — Bearer header
+TOKEN=$(jq -r '.token' {use-case}/.auth.json)
+BASE=$(jq -r '.platform_url' {use-case}/.auth.json)
+curl -s "$BASE/health/adapters" -H "Authorization: Bearer $TOKEN"
+
+# Password (local) — query parameter
+curl -s "$BASE/health/adapters?token=$TOKEN"
+```
+
+**This means:** authenticate once during `/itential-setup`, then every subsequent skill (`/itential-builder`, `/flowagent`, etc.) reads `.auth.json` and just works. No re-asking, no re-authenticating unless the token expires.
+
 ### Token Expiration
 
-Tokens expire. If you get authentication errors mid-session, re-authenticate.
+Tokens expire. If you get authentication errors mid-session, re-authenticate using the `.env` credentials and update `.auth.json`. The user should never need to re-enter credentials manually.
 
 ---
 
@@ -103,11 +138,11 @@ Tokens expire. If you get authentication errors mid-session, re-authenticate.
 
 Once authenticated, ask: **"Are you exploring or building from a spec?"**
 
-### Path A: Ad-hoc / Explore
+### Path A: Exploring
 
-The engineer wants to poke around, build freestyle, or isn't sure yet.
+The engineer wants to look around, build freestyle, or isn't sure yet.
 
-**Light bootstrap** — pull only what's needed to explore:
+**Pull platform data** to a working directory:
 
 ```bash
 mkdir {use-case-name}
@@ -129,9 +164,7 @@ curl -s "{BASE}/health/applications?token=TOKEN" > {use-case}/applications.json
 ```
 
 Present a quick summary (adapters running, app count, task count) and point them to the skills:
-- **`/itential-studio`** — create workflows, templates, projects, discover tasks
-- **`/itential-workflow-engine`** — run/test workflows, utility tasks, wiring patterns, debugging
-- **`/itential-mop`** — command templates, analytic templates, validation checks
+- **`/itential-builder`** — create projects, workflows, templates, command templates (MOP), run/test, debug
 - **`/itential-devices`** — devices, backups, diffs, device groups
 - **`/itential-golden-config`** — golden config, compliance, remediation
 - **`/iag`** — IAG services (Python, Ansible, OpenTofu)
@@ -152,14 +185,20 @@ The engineer wants to build a use case from an HLD spec.
 Or the engineer describes what they need and you recommend a spec.
 
 **2. Create working directory and fork the spec:**
+
+If the directory already exists AND the spec file is already there, **reuse it** — the engineer may have customized it from a previous session. Do NOT overwrite. Only copy the spec if it doesn't exist yet.
+
 ```bash
-mkdir {use-case-name}
-cp spec-files/spec-port-turn-up.md {use-case}/spec.md
+mkdir -p {use-case-name}
+# Only fork the spec if it doesn't already exist
+[ ! -f {use-case}/{use-case}-spec.md ] && cp spec-files/spec-port-turn-up.md {use-case}/{use-case}-spec.md
 ```
 
-**3. Heavy bootstrap** — pull everything needed for design + build. Two stages:
+**3. Pull all platform data.**
 
-**Stage 1: Core platform data** (direct API calls):
+Run these in two groups. **Do not run them all in one parallel batch** — if one call fails, parallel cancellation kills the others. Run Stage 1 together, then Stage 2 together.
+
+**Stage 1: Core platform data** (run these in parallel):
 ```bash
 curl -s "{BASE}/help/openapi?url={ENCODED_BASE}&token=TOKEN" > {use-case}/openapi.json
 curl -s "{BASE}/workflow_builder/tasks/list?token=TOKEN" > {use-case}/tasks.json
@@ -168,25 +207,66 @@ curl -s "{BASE}/health/adapters?token=TOKEN" > {use-case}/adapters.json
 curl -s "{BASE}/health/applications?token=TOKEN" > {use-case}/applications.json
 ```
 
-**Stage 2: Use-case data** — invoke the other skills using the Skill tool to get the correct API details:
-- **Invoke `/itential-devices`** → use its device listing API (POST with options body) to pull devices and device groups. Save to `{use-case}/devices.json` and `{use-case}/device-groups.json`.
-- **Invoke `/itential-studio`** → use its workflow listing API to pull existing workflows and templates. Save to `{use-case}/workflows.json`.
+**Stage 2: Environment-specific data** (run these in parallel, after Stage 1 succeeds):
 
-**You MUST invoke these skills** — they have the correct HTTP methods, request bodies, and response shapes. The device endpoint is a POST (not GET), workflows use `items` (not `results`). Don't guess, load the skill.
+**Devices** (note: POST, not GET):
+```bash
+curl -s -w "\n%{http_code}" -X POST "{BASE}/configuration_manager/devices?token=TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"options":{"start":0,"limit":1000,"sort":[{"name":1}],"order":"ascending"}}' \
+  > {use-case}/devices.json
+```
+Response shape: `{"list": [...]}` — devices are in the `list` field.
 
-**4. Present the full environment summary:**
-- Adapters running (which external systems are available)
-- Device inventory (count, OS types)
-- Existing workflows (reuse candidates)
-- Existing templates and command templates
+**Device groups:**
+```bash
+curl -s -w "\n%{http_code}" "{BASE}/configuration_manager/deviceGroups?token=TOKEN" > {use-case}/device-groups.json
+```
 
-**5. Transition to `/solution-design`** — the working directory is fully bootstrapped. Solution-design reads local files, makes zero additional API calls for discovery.
+**Existing workflows:**
+```bash
+curl -s -w "\n%{http_code}" "{BASE}/automation-studio/workflows?limit=500&token=TOKEN" > {use-case}/workflows.json
+```
+Response shape: `{"items": [...]}` — workflows are in the `items` field.
+
+**Handling failures:** Some endpoints may return errors (HTML pages, empty responses, or non-200 status codes). Before parsing any saved file, check if it contains valid JSON:
+```bash
+jq type {use-case}/devices.json 2>/dev/null || echo "empty"
+```
+If a file is invalid, treat it as "no data available" and move on — don't let one failed endpoint block the entire flow. Not every use case needs every data type (e.g., change management doesn't need devices).
+
+**Do NOT invoke other skills during this step.** The APIs above are all you need for discovery. Only invoke `/itential-builder` later when you're ready to build.
+
+**4. Review the spec against the environment:**
+
+Read the forked spec and the environment data. For each capability and integration in the spec:
+- Check if the platform can do it (adapter exists? app available?)
+- Resolve what you can from the data
+- Ask the engineer only what the data can't answer
+
+Update `{use-case}/{use-case}-spec.md` with everything learned.
+
+**5. Present the spec for approval (Gate 1):**
+
+Show the engineer:
+- Environment summary (adapters, apps, devices, existing workflows)
+- Spec requirements resolved against the environment (what's available, what's missing)
+- Remaining questions that data couldn't answer
+- Updated spec with all changes
+
+Ask: *"Here's your spec updated with what I found. Review it — add, remove, or change anything. When you approve, I'll design the solution."*
+
+The engineer may add features, remove scope, change decisions, or adjust acceptance criteria. Update `{use-case}/{use-case}-spec.md` with every change.
+
+**When the engineer approves: the spec is locked.** Save the file.
+
+**6. Transition to `/solution-design`** — the working directory has all the data and an approved spec. Solution-design reads local files and produces the implementation plan (Gate 2).
 
 ---
 
-## What Gets Created
+## Files Created
 
-### Light Bootstrap (ad-hoc)
+### Exploring
 
 | File | Purpose |
 |------|---------|
@@ -196,11 +276,11 @@ curl -s "{BASE}/health/applications?token=TOKEN" > {use-case}/applications.json
 | `adapters.json` | Adapter details: `id`, `package_id`, `state`, `connection.state` |
 | `applications.json` | Application details with state |
 
-### Heavy Bootstrap (spec-based) — adds:
+### Spec-based — adds:
 
 | File | Purpose |
 |------|---------|
-| `spec.md` | Customer's spec — forked from generic, their source of truth |
+| `{use-case}-spec.md` | Forked spec — updated with environment details, engineer input |
 | `devices.json` | Device inventory |
 | `workflows.json` | Existing workflows (reuse candidates) |
 | `device-groups.json` | Device groups |
@@ -224,14 +304,11 @@ jq '.paths["/configuration_manager/devices"].post.requestBody' {use-case}/openap
 
 **When an API call fails or returns 404:** look it up in `openapi.json` first. Don't guess.
 
-**When debugging ANY issue — check local files FIRST, not the API:**
-- Wrong field name? → `openapi.json` has every request body schema with exact field names and types
-- Task not found? → `tasks.json` has all 11,000+ tasks — search with grep or jq
+**When debugging — check local files FIRST, not the API:**
+- Wrong field name? → `openapi.json` has every request body schema
+- Task not found? → `tasks.json` has all tasks — search with grep or jq
 - Wrong app name? → `apps.json` has the correct casing
-- Payload structure unclear? → `openapi.json` has the full schema, `task-schemas.json` has task variable definitions
 - Already fetched a schema? → Check `task-schemas.json` before calling `multipleTaskDetails` again
-
-**The filesystem is your debugger.** Stop guessing and read the local files — the answer is already there.
 
 ## Key Adapter Mapping
 

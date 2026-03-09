@@ -1,0 +1,409 @@
+{
+  "skills": [
+    {
+      "skill_name": "itential-builder",
+      "evals": [
+        {
+          "id": 1,
+          "prompt": "Build a workflow that uses a merge task to assemble a request body from job variables deviceName and vlanId, then passes that body to a ServiceNow createChangeRequest adapter task.",
+          "expected_output": "Workflow JSON with merge task using 'variable' (not 'value') in data_to_merge, adapter task wired to $var.mergeTaskId.merged_object, adapter_id in incoming, error transition on adapter task, hex-only task IDs, app from apps.json not tasks.json",
+          "assertions": [
+            {"text": "merge data_to_merge uses 'variable' not 'value'", "type": "structural"},
+            {"text": "Adapter task body wired via $var to merge output, not inline $var inside object", "type": "structural"},
+            {"text": "Adapter task has adapter_id in incoming variables", "type": "structural"},
+            {"text": "Adapter task has error transition", "type": "structural"},
+            {"text": "All task IDs are hex-only [0-9a-f]{1,4}", "type": "structural"},
+            {"text": "Adapter app/locationType from apps.json not tasks.json", "type": "structural"},
+            {"text": "merge has at least 2 items in data_to_merge", "type": "structural"}
+          ]
+        },
+        {
+          "id": 2,
+          "prompt": "Create a workflow with a childJob that runs a child workflow called 'Device Backup' for each device in an array, running them in parallel.",
+          "expected_output": "childJob with actor 'job', task '', loopType 'parallel', data_array wired to $var, variables empty {}, job_details null, all unused fields present as empty strings",
+          "assertions": [
+            {"text": "childJob actor is 'job' not 'Pronghorn'", "type": "critical"},
+            {"text": "childJob task field is empty string", "type": "critical"},
+            {"text": "childJob outgoing job_details is null", "type": "critical"},
+            {"text": "childJob loopType is 'parallel'", "type": "structural"},
+            {"text": "childJob variables is {} (empty) when using data_array", "type": "structural"},
+            {"text": "All incoming fields present including unused ones (transformation: '')", "type": "structural"},
+            {"text": "No $var references inside childJob variables object", "type": "critical"}
+          ]
+        },
+        {
+          "id": 3,
+          "prompt": "Build a workflow where a childJob runs a single child workflow and passes the parent's ticketId and deviceName to the child. After the child completes, extract the child's taskStatus using a query task.",
+          "expected_output": "childJob with variables using {task,value} syntax, query task extracting flat variable name from job_details",
+          "assertions": [
+            {"text": "childJob variables use {'task':'job','value':'varName'} syntax not $var", "type": "critical"},
+            {"text": "childJob loopType is '' for single mode", "type": "structural"},
+            {"text": "Query uses flat variable name like 'taskStatus' not nested path", "type": "structural"},
+            {"text": "Query obj wired to $var.childJobTaskId.job_details", "type": "structural"}
+          ]
+        },
+        {
+          "id": 4,
+          "prompt": "Create a workflow with makeData that generates a JSON string containing deviceName and action fields from job variables.",
+          "expected_output": "merge task builds variables object first, makeData references merge output via $var, input uses <!var!> syntax, outputType set correctly",
+          "assertions": [
+            {"text": "merge task precedes makeData to build the variables object", "type": "structural"},
+            {"text": "makeData variables field is $var.mergeTaskId.merged_object not inline", "type": "critical"},
+            {"text": "makeData input uses <!var!> syntax for substitution", "type": "structural"},
+            {"text": "makeData outputType is 'json' for JSON output", "type": "structural"}
+          ]
+        },
+        {
+          "id": 5,
+          "prompt": "I have a workflow where both the success and error paths from an adapter task need to reach workflow_end. Wire it correctly.",
+          "expected_output": "Error routed to intermediate newVariable task, then newVariable routes to workflow_end. Cannot have duplicate JSON keys.",
+          "assertions": [
+            {"text": "Does NOT use workflow_end as key twice in transitions", "type": "critical"},
+            {"text": "Error transition goes to intermediate task (e.g., newVariable)", "type": "structural"},
+            {"text": "Intermediate task then transitions to workflow_end", "type": "structural"}
+          ]
+        },
+        {
+          "id": 6,
+          "prompt": "Add an evaluation task to check if a job variable 'status' equals 'success'. Branch to continue on true, handle error on false.",
+          "expected_output": "evaluation with both success AND failure transitions, operands use 'variable' field, all_true_flag set",
+          "assertions": [
+            {"text": "evaluation has BOTH success AND failure transitions", "type": "critical"},
+            {"text": "Operand references use 'variable' field not 'value'", "type": "structural"},
+            {"text": "evaluation_groups structure is correct with nested evaluations array", "type": "structural"}
+          ]
+        },
+        {
+          "id": 7,
+          "prompt": "Create a newVariable task that sets a job variable called 'result' to the value of another job variable 'computedResult'.",
+          "expected_output": "Should NOT put $var.job.computedResult as the value directly — it won't resolve. Should use merge+query pattern instead.",
+          "assertions": [
+            {"text": "Does NOT use $var inside newVariable value field (stores literal)", "type": "critical"},
+            {"text": "Uses merge or query to resolve the dynamic value first", "type": "structural"}
+          ]
+        },
+        {
+          "id": 8,
+          "prompt": "Build a workflow that pushes items into an array job variable called 'collectedResults' using the push task.",
+          "expected_output": "push task job_variable is plain string 'collectedResults' not '$var.job.collectedResults'",
+          "assertions": [
+            {"text": "push job_variable is plain string name not $var reference", "type": "critical"},
+            {"text": "item_to_push uses $var reference correctly", "type": "structural"}
+          ]
+        },
+        {
+          "id": 9,
+          "prompt": "What's the weather like today?",
+          "expected_output": "Should NOT trigger itential-builder skill",
+          "assertions": [
+            {"text": "Skill is not triggered for unrelated queries", "type": "negative"}
+          ]
+        },
+        {
+          "id": 10,
+          "prompt": "Help me write a Python script that calls the ServiceNow API.",
+          "expected_output": "Should NOT trigger itential-builder skill — this is generic coding, not Itential workflow building",
+          "assertions": [
+            {"text": "Skill is not triggered for generic coding tasks", "type": "negative"}
+          ]
+        }
+      ]
+    },
+    {
+      "skill_name": "itential-setup",
+      "evals": [
+        {
+          "id": 1,
+          "prompt": "Connect me to my Itential platform. I have a cloud instance with OAuth credentials.",
+          "expected_output": "Uses application/x-www-form-urlencoded for OAuth, checks for existing .env files first, saves token for reuse",
+          "assertions": [
+            {"text": "OAuth POST uses Content-Type: application/x-www-form-urlencoded not JSON", "type": "critical"},
+            {"text": "Checks for existing .env file before asking for credentials", "type": "structural"},
+            {"text": "Uses Bearer token in Authorization header for subsequent calls", "type": "structural"}
+          ]
+        },
+        {
+          "id": 2,
+          "prompt": "I want to build the port turn-up use case from the spec file.",
+          "expected_output": "Creates working directory, forks spec, pulls all platform data in 2 stages, reviews spec against environment, presents Gate 1",
+          "assertions": [
+            {"text": "Creates use-case directory", "type": "structural"},
+            {"text": "Forks spec file (does not modify original in spec-files/)", "type": "structural"},
+            {"text": "Pulls Stage 1 data: openapi.json, tasks.json, apps.json, adapters.json, applications.json", "type": "structural"},
+            {"text": "Pulls Stage 2 data: devices.json, workflows.json, device-groups.json", "type": "structural"},
+            {"text": "Does NOT run all API calls in a single parallel batch", "type": "structural"},
+            {"text": "Presents spec for engineer approval (Gate 1) before designing", "type": "structural"}
+          ]
+        },
+        {
+          "id": 3,
+          "prompt": "Set up my environment. Platform is at localhost:4000, username admin, password admin.",
+          "expected_output": "Uses password auth via POST /login, saves token, uses token as query parameter",
+          "assertions": [
+            {"text": "Uses POST /login with JSON body for password auth", "type": "structural"},
+            {"text": "Uses token as query parameter for local dev (not Bearer header)", "type": "structural"}
+          ]
+        },
+        {
+          "id": 4,
+          "prompt": "I already ran setup yesterday. The working directory has all the files. Just let me build.",
+          "expected_output": "Detects existing directory and reuses it — does not re-pull data or re-ask questions",
+          "assertions": [
+            {"text": "Reuses existing working directory without re-pulling data", "type": "structural"},
+            {"text": "Re-authenticates (tokens expire) but reuses local files", "type": "structural"}
+          ]
+        },
+        {
+          "id": 5,
+          "prompt": "How do I configure my router?",
+          "expected_output": "Should NOT trigger itential-setup — this is a generic networking question",
+          "assertions": [
+            {"text": "Skill is not triggered for generic networking questions", "type": "negative"}
+          ]
+        }
+      ]
+    },
+    {
+      "skill_name": "itential-builder",
+      "evals": [
+        {
+          "id": 1,
+          "prompt": "My workflow job is stuck in 'running' state and never completes. The failing task is an adapter call to ServiceNow.",
+          "expected_output": "Diagnoses missing error transition on adapter task. Advises adding state:'error' transition.",
+          "assertions": [
+            {"text": "Identifies missing error transition as root cause of stuck job", "type": "critical"},
+            {"text": "Advises checking job.error array for details", "type": "structural"},
+            {"text": "Does NOT suggest restarting or retrying without fixing the transition", "type": "structural"}
+          ]
+        },
+        {
+          "id": 2,
+          "prompt": "I set a task ID of 'push1' on my arrayPush task but $var.push1.result always returns the literal string instead of the actual value.",
+          "expected_output": "Identifies non-hex task ID as the problem. 'push1' contains non-hex chars. Must use hex-only IDs.",
+          "assertions": [
+            {"text": "Identifies 'push1' as invalid — contains non-hex character", "type": "critical"},
+            {"text": "Explains hex-only rule: [0-9a-f]{1,4}", "type": "structural"},
+            {"text": "Suggests a valid hex replacement like 'a1b2'", "type": "structural"}
+          ]
+        },
+        {
+          "id": 3,
+          "prompt": "I'm trying to pass $var.job.deviceName inside a nested object in my adapter task's body field but it's not resolving.",
+          "expected_output": "Explains $var only resolves at top level of incoming. Use merge to build the object first.",
+          "assertions": [
+            {"text": "Explains $var does not resolve inside nested objects", "type": "critical"},
+            {"text": "Recommends merge or makeData as workaround", "type": "structural"},
+            {"text": "Shows correct pattern: merge builds object, adapter references $var.mergeId.merged_object", "type": "structural"}
+          ]
+        },
+        {
+          "id": 4,
+          "prompt": "My merge task has only 1 item in data_to_merge and the output is null. What's wrong?",
+          "expected_output": "merge requires at least 2 items. 1 item silently produces null.",
+          "assertions": [
+            {"text": "Identifies 1-item merge as the cause of null output", "type": "critical"},
+            {"text": "Advises adding a second item (even a static dummy if needed)", "type": "structural"}
+          ]
+        },
+        {
+          "id": 5,
+          "prompt": "In my forEach loop, the last task connects back to the forEach task but the job errors out.",
+          "expected_output": "Last task in forEach body must have empty transition {}. Do NOT connect back to forEach.",
+          "assertions": [
+            {"text": "Identifies incorrect back-connection as the error", "type": "critical"},
+            {"text": "Explains last body task must have empty {} transition", "type": "structural"},
+            {"text": "forEach handles the loop iteration automatically", "type": "structural"}
+          ]
+        },
+        {
+          "id": 6,
+          "prompt": "Help me optimize my SQL queries for PostgreSQL.",
+          "expected_output": "Should NOT trigger workflow-engine skill",
+          "assertions": [
+            {"text": "Skill is not triggered for database optimization", "type": "negative"}
+          ]
+        }
+      ]
+    },
+    {
+      "skill_name": "itential-mop",
+      "evals": [
+        {
+          "id": 1,
+          "prompt": "Build a pre-check command template that validates interface status and VLAN assignment on a Cisco IOS device.",
+          "expected_output": "Command template with <!var!> syntax, passRule logic, contains eval, severity set, proper structure",
+          "assertions": [
+            {"text": "Uses <!variable!> syntax not {{ }} or $var", "type": "critical"},
+            {"text": "passRule set at template and command level", "type": "structural"},
+            {"text": "Rules have eval, severity, and rule fields", "type": "structural"},
+            {"text": "Uses 'contains' eval type (not 'Contains' or 'CONTAINS')", "type": "structural"},
+            {"text": "Wrapped in {mop: {...}} for API call", "type": "structural"}
+          ]
+        },
+        {
+          "id": 2,
+          "prompt": "Create a command template that uses regex to check if interface error counters are below a threshold.",
+          "expected_output": "Uses RegEx eval (capital R, E) with proper regex syntax, or #comparison for numeric comparison",
+          "assertions": [
+            {"text": "Uses 'RegEx' not 'regex' or 'Regex' (case-sensitive)", "type": "critical"},
+            {"text": "Regex pattern in /pattern/ format", "type": "structural"},
+            {"text": "For numeric comparison, uses #comparison with evaluator", "type": "structural"}
+          ]
+        },
+        {
+          "id": 3,
+          "prompt": "My MOP template passes even though the device output clearly doesn't match. Variables are set but the command seems to be skipped.",
+          "expected_output": "Missing variable = skip = PASS. If <!var!> has no value provided, the command is silently skipped and counts as PASSED.",
+          "assertions": [
+            {"text": "Identifies missing variable causing silent skip/pass", "type": "critical"},
+            {"text": "Advises verifying variables are passed correctly in the RunCommandTemplate call", "type": "structural"}
+          ]
+        },
+        {
+          "id": 4,
+          "prompt": "I want to use MOP to push a VLAN configuration change to my switches.",
+          "expected_output": "Should refuse — MOP is read-only validation only. Direct to Jinja2 templates and workflow adapter tasks for config changes.",
+          "assertions": [
+            {"text": "Refuses to use MOP for config push — MOP is read-only", "type": "critical"},
+            {"text": "Recommends Jinja2 templates for config generation", "type": "structural"}
+          ]
+        },
+        {
+          "id": 5,
+          "prompt": "Update my existing command template to add a new rule. I only want to send the changed fields.",
+          "expected_output": "MOP update is full replacement — must include ALL fields, not just changes.",
+          "assertions": [
+            {"text": "Warns that update is full replacement", "type": "critical"},
+            {"text": "Advises fetching current template first, then sending complete body", "type": "structural"}
+          ]
+        },
+        {
+          "id": 6,
+          "prompt": "Write me a Terraform module for AWS VPC.",
+          "expected_output": "Should NOT trigger MOP skill",
+          "assertions": [
+            {"text": "Skill is not triggered for Terraform tasks", "type": "negative"}
+          ]
+        }
+      ]
+    },
+    {
+      "skill_name": "solution-design",
+      "evals": [
+        {
+          "id": 1,
+          "prompt": "I approved my port turn-up spec. Design the solution. The environment has a ServiceNow adapter running and devices in inventory.",
+          "expected_output": "Produces solution-design.md with requirements resolution, design decisions, component inventory, implementation plan, acceptance criteria mapping",
+          "assertions": [
+            {"text": "Reads local files only — does NOT make API calls during design", "type": "critical"},
+            {"text": "Resolves adapter names from apps.json not tasks.json", "type": "critical"},
+            {"text": "Produces component inventory with type and action (build/reuse)", "type": "structural"},
+            {"text": "Maps acceptance criteria to test methods", "type": "structural"},
+            {"text": "Presents design for approval (Gate 2) before building", "type": "structural"}
+          ]
+        },
+        {
+          "id": 2,
+          "prompt": "Design a solution for config backup. The environment has no ITSM adapter.",
+          "expected_output": "Marks ITSM as skipped (not required) or blocked (if required). Does not invent an adapter that doesn't exist.",
+          "assertions": [
+            {"text": "Does NOT invent adapters that aren't in the environment", "type": "critical"},
+            {"text": "Marks missing optional integration as 'skipped' with fallback", "type": "structural"},
+            {"text": "Marks missing required integration as 'blocked'", "type": "structural"}
+          ]
+        },
+        {
+          "id": 3,
+          "prompt": "Build the solution design. I haven't approved the spec yet.",
+          "expected_output": "Should refuse to proceed — Gate 1 (spec approval) must happen before design.",
+          "assertions": [
+            {"text": "Does NOT skip Gate 1 — requires spec approval first", "type": "critical"},
+            {"text": "Asks engineer to review and approve spec before proceeding", "type": "structural"}
+          ]
+        },
+        {
+          "id": 4,
+          "prompt": "The design includes child workflows. How will they be deployed into a project?",
+          "expected_output": "Create project first, then build inside it OR build globally then move. Warns that move re-prefixes names but doesn't update childJob workflow refs.",
+          "assertions": [
+            {"text": "Warns about project move breaking childJob workflow references", "type": "critical"},
+            {"text": "Recommends creating project first and building inside it", "type": "structural"}
+          ]
+        },
+        {
+          "id": 5,
+          "prompt": "Help me design a REST API in Express.js.",
+          "expected_output": "Should NOT trigger solution-design skill",
+          "assertions": [
+            {"text": "Skill is not triggered for generic API design tasks", "type": "negative"}
+          ]
+        }
+      ]
+    },
+    {
+      "skill_name": "flowagent",
+      "evals": [
+        {
+          "id": 1,
+          "prompt": "Set up an AI agent that monitors device health and creates ServiceNow tickets for issues. I have a Claude provider already configured.",
+          "expected_output": "Creates agent with correct structure: identity, llm.provider, messages (system + user), capabilities with toolset identifiers using // format",
+          "assertions": [
+            {"text": "Agent has identity with agent_account and agent_password", "type": "structural"},
+            {"text": "llm.provider references an existing provider name", "type": "structural"},
+            {"text": "messages array has system prompt first, then user objective", "type": "structural"},
+            {"text": "Tool identifiers use // format (e.g., ServiceNow//createChangeRequest)", "type": "critical"},
+            {"text": "Body wrapped in {details: {...}}", "type": "critical"},
+            {"text": "capabilities.toolset is an array of tool identifiers", "type": "structural"}
+          ]
+        },
+        {
+          "id": 2,
+          "prompt": "I want to test a ServiceNow tool before giving it to my agent. How do I call it directly?",
+          "expected_output": "Shows how to map tool identifier to direct API route and test it",
+          "assertions": [
+            {"text": "Maps adapter tool identifier to POST /AdapterName/methodName route", "type": "structural"},
+            {"text": "Suggests checking openapi.json for the correct request body", "type": "structural"},
+            {"text": "Tests the tool directly before assigning to agent", "type": "structural"}
+          ]
+        },
+        {
+          "id": 3,
+          "prompt": "My agent mission failed. The conclusion says the tool returned an error about missing fields. How do I debug this?",
+          "expected_output": "Check GET /missions/{id} for conclusion and toolStats, test the tool directly with the same params, fix system prompt",
+          "assertions": [
+            {"text": "Checks mission details: conclusion, toolStats, tokenUsage", "type": "structural"},
+            {"text": "Tests the failing tool directly outside the agent", "type": "structural"},
+            {"text": "Updates system prompt to guide correct tool usage", "type": "structural"}
+          ]
+        },
+        {
+          "id": 4,
+          "prompt": "Create a quick one-off agent to check if a device is reachable. Don't save it.",
+          "expected_output": "Uses POST /flowai/adhoc_agent with description, objective, and tools. Notes default_provider requirement.",
+          "assertions": [
+            {"text": "Uses adhoc_agent endpoint, not agents create+call", "type": "critical"},
+            {"text": "Mentions default_provider must be configured", "type": "structural"},
+            {"text": "Includes tools array with correct // identifier format", "type": "structural"}
+          ]
+        },
+        {
+          "id": 5,
+          "prompt": "I get 'Tool names must be unique' when creating my agent. I have two adapters with getDevice methods.",
+          "expected_output": "Duplicate tool names across adapters cause this. Use specific identifiers in capabilities.toolset to pick one.",
+          "assertions": [
+            {"text": "Identifies duplicate tool names as the cause", "type": "critical"},
+            {"text": "Advises filtering capabilities.toolset to specific adapter", "type": "structural"}
+          ]
+        },
+        {
+          "id": 6,
+          "prompt": "Build me a React app with authentication.",
+          "expected_output": "Should NOT trigger flowagent skill",
+          "assertions": [
+            {"text": "Skill is not triggered for generic web dev tasks", "type": "negative"}
+          ]
+        }
+      ]
+    }
+  ]
+}

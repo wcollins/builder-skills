@@ -1,5 +1,4 @@
 {
-  "_comment": "Template for a childJob task. actor MUST be 'job', task MUST be empty string (engine auto-sets at runtime). Variables use {task, value} syntax — NOT $var. Example: {\"task\": \"job\", \"value\": \"myVar\"} passes the parent's job variable 'myVar' to the child. Use {\"task\": \"static\", \"value\": \"literal\"} for static values. job_details is often empty — child results stay in the child job's variables unless the child explicitly sets job_output.",
   "name": "childJob",
   "canvasName": "childJob",
   "summary": "Run Child Automation",
@@ -32,5 +31,8 @@
   "groups": [],
   "actor": "job",
   "scheduled": false,
-  "nodeLocation": { "x": 600, "y": 1308 }
+  "nodeLocation": {
+    "x": 600,
+    "y": 1308
+  }
 }
