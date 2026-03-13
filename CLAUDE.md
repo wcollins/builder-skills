@@ -8,8 +8,8 @@ Each skill owns a domain. **Invoke the skill using the Skill tool before working
 
 | Skill | Owns | When to Use |
 |-------|------|-------------|
-| `/itential-setup` | **Entry point** | Always start here. Auth, discover environment, spec review. |
-| `/solution-design` | Design + plan | Entered from setup. Produce solution design, refine, get approval. |
+| `/itential-setup` | **Entry point** | Always start here. Route: explore (auth + bootstrap) or spec (fork + hand off). |
+| `/solution-design` | Spec → design | Understand spec, approve (Gate 1), discover environment, design, approve (Gate 2). |
 | `/itential-builder` | **Building everything** | Create projects, workflows, templates (Jinja2/TextFSM), command templates (MOP). Wire tasks, run jobs, debug. |
 | `/itential-devices` | Device operations | List devices, get configs, backup, diff, device groups, apply templates. |
 | `/itential-golden-config` | Compliance | Golden config trees, config specs, compliance plans, grading, remediation. |
@@ -20,34 +20,35 @@ Each skill owns a domain. **Invoke the skill using the Skill tool before working
 
 ### User Flow
 
-`/itential-setup` is the single entry point. It handles auth, environment discovery, and spec review, then routes to build:
+`/itential-setup` is the entry point. It asks intent, then routes.
 
 ```
-/itential-setup          → Auth, discover environment, spec review (Gate 1)
+/itential-setup          → "What are you here to do?"
   │
-  ├── "Build from a spec"
-  │     /solution-design → Design document (Gate 2)
-  │     /itential-builder → Create project, build all assets, test
+  ├── "Explore"
+  │     Auth → pull bootstrap → summarize → use skills directly
   │
-  └── "Explore / build freestyle"
-        /itential-builder → projects, workflows, templates, MOP, run/test
-        /itential-devices — devices, backups, diffs, device groups
-        /itential-golden-config — compliance, golden config
-        /iag — IAG services (Python, Ansible, OpenTofu)
+  └── "Build from a spec"
+        Pick spec → fork to customer-spec.md → set expectations
+        │
+        /solution-design → Understand + Gate 1 (spec) → Discover → Design + Gate 2
+        /itential-builder → Execute locked plan, test, deliver
 ```
 
-**Typical spec-based flow (3 skill loads):**
+**Spec-based flow — three layers:**
 ```
-/itential-setup     → auth, discover environment, spec review (Gate 1)
-/solution-design    → design document, component inventory (Gate 2)
-/itential-builder   → create project, build everything, test
+INTENT:       /itential-setup → fork spec → /solution-design Phase 1 → Gate 1
+FEASIBILITY:  /solution-design Phase 2-3 → auth, discover, design → Gate 2
+EXECUTION:    /itential-builder → build from locked plan, test, deliver
 ```
+
+**Key principle:** Lock intent before touching the environment. Design against approved intent. Build only from approved design.
 
 **IMPORTANT: Invoke skills using the Skill tool** — don't just reference them in text. When you need to build workflows/templates, invoke `/itential-builder`. When you need to work with devices, invoke `/itential-devices`. The skills contain the API details you need. Without loading them, you're guessing.
 
 ### Auth Reuse — Authenticate Once, Reuse Everywhere
 
-**After `/itential-setup` authenticates, the token is saved to `{use-case}/.auth.json`.** Every other skill should:
+**Auth happens when first needed** — in setup (explore path) or in solution-design Phase 2 (spec path). The token is saved to `{use-case}/.auth.json`. Every subsequent skill should:
 1. Read `{use-case}/.auth.json` for `platform_url`, `auth_method`, and `token`
 2. Use the token for all API calls (Bearer header for OAuth, query param for local)
 3. On auth error (401/403): re-authenticate using `{use-case}/.env` and update `.auth.json`
@@ -69,7 +70,7 @@ curl -s "{BASE}/help/openapi?url={ENCODED_BASE}" -H "Authorization: Bearer {TOKE
 # Local dev
 curl -s "{BASE}/help/openapi?url={ENCODED_BASE}&token={TOKEN}" > openapi.json
 ```
-The setup skill does this automatically. If you're working outside setup, fetch it yourself.
+For explore mode, setup pulls this automatically. For spec mode, solution-design pulls it after Gate 1. If you're working outside those flows, fetch it yourself.
 
 **Before making any API call:**
 1. Check the relevant skill for the pattern
@@ -116,19 +117,13 @@ Figure out which **category of work** the user needs:
 
 ## Developer Flow
 
-### Step 1: Gather Requirements
+### Step 1: Start with Intent
 
-Before building anything, understand:
-- What is the use case?
-- What systems are involved? (which adapters)
-- What devices? (vendor, OS)
-- What should the output be?
+Use `/itential-setup` to decide what you're doing:
+- **Explore** — auth, pull bootstrap, browse the platform with skills
+- **Build from spec** — pick a spec, fork it, then `/solution-design` handles everything: understand → approve spec (Gate 1) → discover environment → design → approve design (Gate 2)
 
-### Step 2: Set Up the Environment
-
-Use `/itential-setup` to authenticate and discover the environment.
-
-### Step 3: Build Incrementally
+### Step 2: Build Incrementally (after design is approved)
 
 1. **Check for existing assets to reuse** — search workflows, templates before building new
 2. **Test each piece individually** — command templates, Jinja2 templates, child workflows
@@ -172,7 +167,7 @@ When something fails: check `job.status`, check `job.error` array, look at `IAPe
 8. **`$var` references don't resolve inside object values** (e.g., inside `newVariable` value or adapter `body`) — use `merge`, `makeData`, `query`, or other utility tasks to build the object, then pass it as a top-level `$var` reference
 9. **Task IDs are hex-only** — `[0-9a-f]{1,4}`. Non-hex IDs (e.g., `apush`) cause `$var` references to silently fail (classified as static, never resolved)
 10. **`genericAdapterRequest` prepends the adapter's `base_path`** to `uriPath` — don't include `/api/v1` in `uriPath`. Use `genericAdapterRequestNoBasePath` if you need the full path
-11. **Create projects first, then build inside them** — moving/copying assets into a project re-prefixes names and changes `_id` but does NOT update internal references (childJob workflow refs, template names, transformation IDs)
+11. **Use `POST /projects/import` to create projects atomically** — build all assets locally, pre-compute the project `_id`, pre-wire childJob `@projectId:` refs, then import everything in one call. Avoid the create-then-move pattern (breaks childJob refs, causes project-locking issues).
 12. **API response shapes vary** — projects use `{message, data, metadata}`, but workflow and template lists use `{items, skip, limit, total}`, and create endpoints return `{created, edit}`. Always check the response shape before parsing
 13. **Project component types** — valid values: `workflow`, `template`, `transformation`, `jsonForm`, `mopCommandTemplate`, `mopAnalyticTemplate`
 14. **Use skills, don't reimplement** — `/itential-builder` covers projects, workflows, templates, MOP, and testing. Only load other skills for their specific domains (devices, compliance, IAG, etc.)

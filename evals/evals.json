@@ -125,14 +125,13 @@
         {
           "id": 2,
           "prompt": "I want to build the port turn-up use case from the spec file.",
-          "expected_output": "Creates working directory, forks spec, pulls all platform data in 2 stages, reviews spec against environment, presents Gate 1",
+          "expected_output": "Creates working directory, forks spec as customer-spec.md, sets expectations for the flow, hands off to /solution-design. Does NOT auth or pull data.",
           "assertions": [
             {"text": "Creates use-case directory", "type": "structural"},
-            {"text": "Forks spec file (does not modify original in spec-files/)", "type": "structural"},
-            {"text": "Pulls Stage 1 data: openapi.json, tasks.json, apps.json, adapters.json, applications.json", "type": "structural"},
-            {"text": "Pulls Stage 2 data: devices.json, workflows.json, device-groups.json", "type": "structural"},
-            {"text": "Does NOT run all API calls in a single parallel batch", "type": "structural"},
-            {"text": "Presents spec for engineer approval (Gate 1) before designing", "type": "structural"}
+            {"text": "Forks spec to customer-spec.md (does not modify original in spec-files/)", "type": "structural"},
+            {"text": "Does NOT authenticate or pull platform data for spec path", "type": "critical"},
+            {"text": "Tells engineer what happens next (understand, Gate 1, discover, design, Gate 2, build)", "type": "structural"},
+            {"text": "Hands off to /solution-design with only the forked spec file", "type": "structural"}
           ]
         },
         {
@@ -147,10 +146,10 @@
         {
           "id": 4,
           "prompt": "I already ran setup yesterday. The working directory has all the files. Just let me build.",
-          "expected_output": "Detects existing directory and reuses it — does not re-pull data or re-ask questions",
+          "expected_output": "Detects existing directory and reuses it — does not re-create or re-fork. Points to appropriate skill based on what's in the workspace.",
           "assertions": [
-            {"text": "Reuses existing working directory without re-pulling data", "type": "structural"},
-            {"text": "Re-authenticates (tokens expire) but reuses local files", "type": "structural"}
+            {"text": "Reuses existing working directory without overwriting files", "type": "structural"},
+            {"text": "Checks what artifacts exist (customer-spec.md, solution-design.md) to determine where in the flow to resume", "type": "structural"}
           ]
         },
         {
@@ -293,11 +292,12 @@
         {
           "id": 1,
           "prompt": "I approved my port turn-up spec. Design the solution. The environment has a ServiceNow adapter running and devices in inventory.",
-          "expected_output": "Produces solution-design.md with requirements resolution, design decisions, component inventory, implementation plan, acceptance criteria mapping",
+          "expected_output": "After Gate 1 (spec approved): authenticates, pulls bootstrap + spec-contingent data, resolves capabilities/integrations, produces solution-design.md with component inventory, presents for Gate 2",
           "assertions": [
-            {"text": "Reads local files only — does NOT make API calls during design", "type": "critical"},
+            {"text": "Authenticates and pulls bootstrap data AFTER spec approval (not before)", "type": "critical"},
+            {"text": "Pulls spec-contingent data based on approved scope (devices, workflows)", "type": "structural"},
             {"text": "Resolves adapter names from apps.json not tasks.json", "type": "critical"},
-            {"text": "Produces component inventory with type and action (build/reuse)", "type": "structural"},
+            {"text": "Produces component inventory with type and action (build/reuse/skip)", "type": "structural"},
             {"text": "Maps acceptance criteria to test methods", "type": "structural"},
             {"text": "Presents design for approval (Gate 2) before building", "type": "structural"}
           ]
@@ -401,6 +401,121 @@
           "expected_output": "Should NOT trigger flowagent skill",
           "assertions": [
             {"text": "Skill is not triggered for generic web dev tasks", "type": "negative"}
+          ]
+        }
+      ]
+    },
+    {
+      "skill_name": "iag",
+      "evals": [
+        {
+          "id": 1,
+          "prompt": "Build an IAG Python service that connects to a Cisco XR device via SSH, runs 'show bgp summary', and returns parsed neighbor data as JSON. Device credentials should be stored as secrets.",
+          "expected_output": "services.yaml with decorator ($id matches service name, additionalProperties: false), repository, python-script service with secrets (type: env, target: ENV_VAR), runtime.req-file. Python script uses argparse for decorator inputs, os.environ for secrets, prints JSON to stdout, exits 0/1.",
+          "assertions": [
+            {"text": "Decorator $id matches the service name (not 'root')", "type": "critical"},
+            {"text": "Decorator schema has additionalProperties: false", "type": "critical"},
+            {"text": "Service type is python-script", "type": "structural"},
+            {"text": "Secrets use type: env with target: ENV_VAR_NAME", "type": "critical"},
+            {"text": "runtime.req-file points to requirements.txt", "type": "structural"},
+            {"text": "Python script uses argparse for decorator schema inputs", "type": "critical"},
+            {"text": "Python script uses os.environ for secrets (not argparse)", "type": "critical"},
+            {"text": "Python script outputs JSON to stdout via print(json.dumps(...))", "type": "critical"},
+            {"text": "Python script uses sys.exit(0) for success and sys.exit(1) for failure", "type": "structural"}
+          ]
+        },
+        {
+          "id": 2,
+          "prompt": "Create an IAG Ansible service that runs health check show commands on a Cisco XR device. I need show version, show platform, and show ip interface brief.",
+          "expected_output": "services.yaml with ansible-playbook service, runtime block (inventory, config-file, req-file, env), inventory.yaml with network_cli + Jinja2 refs, ansible.cfg with look_for_keys=False, playbook using iosxr_command or cli_command",
+          "assertions": [
+            {"text": "Service type is ansible-playbook", "type": "structural"},
+            {"text": "runtime.inventory references inventory file", "type": "critical"},
+            {"text": "runtime.config-file references ansible.cfg", "type": "structural"},
+            {"text": "runtime.req-file references requirements.txt with paramiko", "type": "critical"},
+            {"text": "runtime.env includes ANSIBLE_HOST_KEY_CHECKING: false", "type": "structural"},
+            {"text": "runtime.env includes ANSIBLE_STDOUT_CALLBACK: json", "type": "structural"},
+            {"text": "Inventory uses network_cli connection with ansible_network_os set", "type": "critical"},
+            {"text": "Inventory uses Jinja2 {{ var }} references to decorator schema properties", "type": "critical"},
+            {"text": "ansible.cfg includes [paramiko_connection] look_for_keys = False", "type": "critical"},
+            {"text": "Playbook uses cisco.iosxr.iosxr_command or ansible.netcommon.cli_command (not ansible.builtin.raw)", "type": "critical"}
+          ]
+        },
+        {
+          "id": 3,
+          "prompt": "Build an IAG OpenTofu service that provisions infrastructure. It needs variables for environment and region.",
+          "expected_output": "services.yaml with opentofu-plan service using correct field names: vars, var-files, action, state-file (NOT plan-vars or plan-var-files)",
+          "assertions": [
+            {"text": "Service type is opentofu-plan", "type": "structural"},
+            {"text": "Uses 'vars' field NOT 'plan-vars'", "type": "critical"},
+            {"text": "Uses 'var-files' field NOT 'plan-var-files'", "type": "critical"},
+            {"text": "Includes action field (apply, plan, or destroy)", "type": "critical"},
+            {"text": "Includes state-file field (null or path)", "type": "structural"},
+            {"text": "Secrets use TF_VAR_ prefix convention for OpenTofu variables", "type": "structural"}
+          ]
+        },
+        {
+          "id": 4,
+          "prompt": "I'm getting an error importing my IAG service. The decorator schema has $id set to 'root' and no additionalProperties setting.",
+          "expected_output": "Diagnoses $id should match service name, not 'root'. Advises adding additionalProperties: false for strict validation.",
+          "assertions": [
+            {"text": "Identifies $id: root as incorrect — should match service name", "type": "critical"},
+            {"text": "Recommends additionalProperties: false", "type": "structural"}
+          ]
+        },
+        {
+          "id": 5,
+          "prompt": "My OpenTofu IAG service YAML has plan-vars and plan-var-files fields but iagctl validate fails. What's wrong?",
+          "expected_output": "Wrong field names. OpenTofu services use 'vars' and 'var-files', NOT 'plan-vars' and 'plan-var-files'.",
+          "assertions": [
+            {"text": "Identifies plan-vars as wrong — correct field is vars", "type": "critical"},
+            {"text": "Identifies plan-var-files as wrong — correct field is var-files", "type": "critical"}
+          ]
+        },
+        {
+          "id": 6,
+          "prompt": "My Ansible IAG service using network_cli fails with 'No existing session' on a Cisco XR device. I'm using password auth.",
+          "expected_output": "The 'No existing session' error with network_cli + paramiko is caused by missing look_for_keys = False in ansible.cfg.",
+          "assertions": [
+            {"text": "Identifies look_for_keys = False as the fix for 'No existing session' with password auth", "type": "critical"},
+            {"text": "Recommends adding [paramiko_connection] section to ansible.cfg", "type": "structural"},
+            {"text": "Mentions paramiko needs to be in requirements.txt (runtime.req-file)", "type": "structural"}
+          ]
+        },
+        {
+          "id": 7,
+          "prompt": "How do I run an OpenTofu IAG service with iagctl? I tried 'iagctl run service opentofu-plan my-service --set env=dev' but it fails.",
+          "expected_output": "CLI syntax requires action subcommand between type and name: iagctl run service opentofu-plan apply my-service --set env=dev",
+          "assertions": [
+            {"text": "Identifies missing action subcommand (apply/destroy) in CLI syntax", "type": "critical"},
+            {"text": "Shows correct syntax: iagctl run service opentofu-plan apply <name> --set key=value", "type": "structural"}
+          ]
+        },
+        {
+          "id": 8,
+          "prompt": "I want to build one Python script that handles multiple IAG services — like list, create, and delete operations for the same API.",
+          "expected_output": "One-file-multi-service pattern: same script with different runtime.env values (e.g., ACTION=list, ACTION=create). Script reads os.environ['ACTION'] to select behavior. Each service in services.yaml shares the same filename but has different runtime.env.",
+          "assertions": [
+            {"text": "Describes one-file-multi-service pattern using runtime.env", "type": "critical"},
+            {"text": "Each service definition has different runtime.env values", "type": "structural"},
+            {"text": "Script uses os.environ to read the action selector", "type": "structural"},
+            {"text": "All services share the same filename and working-directory", "type": "structural"}
+          ]
+        },
+        {
+          "id": 9,
+          "prompt": "Write me a standalone Ansible playbook for my home lab.",
+          "expected_output": "Should NOT trigger IAG skill — this is generic Ansible, not IAG service building",
+          "assertions": [
+            {"text": "Skill is not triggered for generic Ansible tasks outside IAG context", "type": "negative"}
+          ]
+        },
+        {
+          "id": 10,
+          "prompt": "Help me write a Terraform module for AWS.",
+          "expected_output": "Should NOT trigger IAG skill — this is generic Terraform/OpenTofu, not IAG service building",
+          "assertions": [
+            {"text": "Skill is not triggered for generic Terraform/OpenTofu tasks outside IAG context", "type": "negative"}
           ]
         }
       ]

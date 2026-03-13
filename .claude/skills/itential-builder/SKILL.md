@@ -8,6 +8,44 @@ argument-hint: "[action or asset-type]"
 
 This skill covers everything needed to build and test Itential automation assets: projects, workflows, templates, and command templates.
 
+## Workspace Contract
+
+**The builder receives a complete workspace. All discovery data is already present.** Solution-design (or setup for explore mode) has already pulled everything.
+
+**Required files (must exist before build starts):**
+```
+{use-case}/
+  .auth.json              ← auth token
+  .env                    ← credentials (for re-auth if token expires)
+  openapi.json            ← API reference
+  tasks.json              ← task catalog
+  apps.json               ← app names
+  adapters.json           ← adapter instances
+  applications.json       ← app health
+```
+
+**May also exist (spec-contingent):**
+```
+  customer-spec.md        ← locked HLD (if spec-based)
+  customer-context.md     ← business rules (if provided)
+  solution-design.md      ← locked LLD (if spec-based)
+  devices.json            ← device inventory
+  workflows.json          ← existing workflows
+  device-groups.json      ← device groups
+  task-schemas.json       ← cached task schemas
+```
+
+**The builder NEVER re-pulls bootstrap or discovery data.** If `tasks.json`, `apps.json`, or `adapters.json` is missing, stop and tell the user — that's an upstream failure, not something to silently fix.
+
+**The only API calls the builder makes are:**
+- **Create** — POST workflows, templates, projects
+- **Update** — PUT to edit assets
+- **Test** — POST jobs/start, GET job status
+- **Schema fetch** — task schemas not yet in `task-schemas.json` (append to file after fetching)
+- **Re-auth** — if token expires, use `.env` to refresh `.auth.json`
+
+---
+
 ## Build Lifecycle
 
 ```
@@ -469,49 +507,114 @@ The parent can then check `taskStatus` from `job_details` to decide what to do.
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| POST | `/automation-studio/projects` | Create a new project |
+| POST | `/automation-studio/projects/import` | **Import a project (preferred — atomic)** |
+| POST | `/automation-studio/projects` | Create an empty project |
 | GET | `/automation-studio/projects/{projectId}` | Get a project |
 | PATCH | `/automation-studio/projects/{projectId}` | Update a project |
 | DELETE | `/automation-studio/projects/{id}` | Delete a project |
 | GET | `/automation-studio/projects/{id}/export` | Export project as JSON |
-| POST | `/automation-studio/projects/import` | Import a project |
-| POST | `/automation-studio/projects/{projectId}/components/add` | Add components |
+| POST | `/automation-studio/projects/{projectId}/components/add` | Add components (legacy) |
 | DELETE | `/automation-studio/projects/{projectId}/components/{componentId}` | Remove component |
 
-**Create a project:**
+### Preferred: Import a project (atomic — all assets in one call)
+
+**Always use import instead of create + add components.** Import creates the project with all workflows, templates, and MOP templates inside it in a single atomic call. No intermediate state, no broken childJob refs, no project-locking issues.
+
 ```
-POST /automation-studio/projects
-```
-```json
-{"name": "My Network Automations", "description": "VLAN provisioning and compliance"}
+POST /automation-studio/projects/import
 ```
 
-Response uses `{message, data, metadata}` shape. Project is in `data`:
+**Build all assets locally first, then import everything at once:**
+
 ```json
-{"message": "Successfully created project", "data": {"_id": "699a6b89...", "name": "..."}}
+{
+  "project": {
+    "_id": "24-char-hex-mongodb-objectid",
+    "iid": 1,
+    "name": "My Project",
+    "description": "...",
+    "thumbnail": "",
+    "backgroundColor": "#FFFFFF",
+    "components": [
+      {
+        "iid": 1,
+        "type": "workflow",
+        "reference": "uuid-of-workflow",
+        "folder": "/",
+        "document": { "...full workflow object..." }
+      },
+      {
+        "iid": 2,
+        "type": "mopCommandTemplate",
+        "reference": "@projectId: Template Name",
+        "folder": "/",
+        "document": { "...full MOP object..." }
+      }
+    ],
+    "created": "2026-03-13T00:00:00.000Z",
+    "createdBy": {"_id": "000000000000000000000000", "provenance": "CloudAAA", "username": "admin@itential"},
+    "lastUpdated": "2026-03-13T00:00:00.000Z",
+    "lastUpdatedBy": {"_id": "000000000000000000000000", "provenance": "CloudAAA", "username": "admin@itential"}
+  }
+}
 ```
 
-**Add components:**
+**Import format rules (different from create/export):**
+
+| Field | Import format | Notes |
+|-------|--------------|-------|
+| `encodingVersion` | **OMIT** from workflow documents | Causes silent component failure if included |
+| `created_by` (workflow) | `{username, provenance, firstname, inactive, sso}` — NO `_id` | Different from project-level `createdBy` |
+| `createdBy` (project) | `{_id, username, provenance}` — HAS `_id` | Different from workflow-level |
+| `_id` (project) | Pre-compute 24-char hex string | So childJob refs can use `@{projectId}:` |
+| Workflow `name` | Clean names — no prefix | Import adds `@projectId:` automatically |
+| childJob `workflow` | Must include `@{projectId}:` prefix | Pre-wire using the same `_id` |
+| `reference` (workflow) | UUID string | Becomes the workflow's `uuid` |
+| `reference` (MOP) | `@{projectId}: Template Name` | String reference |
+| `iid` (components) | Sequential integers starting at 1 | Incrementing ID |
+
+Response:
+```json
+{
+  "message": "Successfully imported project",
+  "data": {"_id": "...", "name": "...", "components": [...]},
+  "metadata": {"failedComponents": []}
+}
+```
+**Check `metadata.failedComponents`** — empty array means success.
+
+### Why import instead of create + move
+
+| Problem | Create + move | Import |
+|---------|--------------|--------|
+| childJob refs | Break on move — manual fix needed | Pre-wired with `@projectId:` — just work |
+| Project locking | Race conditions during move | Single atomic call |
+| Intermediate state | Workflows exist outside project | Never |
+| API calls | Create + create each asset + move + fix refs | One POST |
+| Reproducibility | Hard to replay | `project-import.json` is the artifact |
+
+### Legacy: Create + add components (avoid if possible)
+
+Only use this for adding a single asset to an existing project after initial import.
+
 ```
 POST /automation-studio/projects/{projectId}/components/add
 ```
 ```json
 {
   "components": [
-    {"type": "workflow", "reference": "d8c323f6-...", "folder": "/"},
-    {"type": "template", "reference": "699a6b96...", "folder": "/"}
+    {"type": "workflow", "reference": "uuid-...", "folder": "/"}
   ],
   "mode": "move"
 }
 ```
 
-- `mode`: `"move"` (removes from global scope) or `"copy"` (keeps both)
-- `reference`: the `_id` of the asset
-- **Both modes rename assets** with `@projectId:` prefix and assign new `_id`s. Internal references (childJob `workflow` fields, template names) are NOT updated.
+**Warning:** Both `move` and `copy` rename assets with `@projectId:` prefix but do NOT update internal references (childJob `workflow` fields, template names). You must fix these manually.
 
 **Component types:** `workflow`, `template`, `transformation`, `jsonForm`, `mopCommandTemplate`, `mopAnalyticTemplate`
 
-**Update membership (full replacement):**
+### Update membership (full replacement)
+
 ```
 PATCH /automation-studio/projects/{projectId}
 ```
@@ -576,6 +679,31 @@ POST /automation-studio/multipleTaskDetails?dereferenceSchemas=true
 1. Check if `{use-case}/task-schemas.json` exists — search it first
 2. Only call `multipleTaskDetails` for tasks NOT already in the local file
 3. After fetching, append to the local file
+
+### nodeLocation Spacing Convention
+
+Follow consistent spacing for readability on the Automation Studio canvas:
+
+| Rule | Value |
+|------|-------|
+| workflow_start → first task (x-delta) | +264px |
+| Sequential task columns (x-delta) | +360px |
+| Stacked tasks in same column (y-delta) | +132px |
+| Last task → workflow_end (x-delta) | +276px |
+
+**Layout strategy:** Group related tasks vertically at the same x-coordinate:
+- A phase's main task + its error handler share the same x, offset by +132px in y
+- childJob + output extraction query in the same column
+- merge + the adapter call it feeds in the same column
+
+Example for a 3-phase workflow:
+```
+workflow_start (x=0, y=0)
+  Phase 1: x=264   — task1 (y=0), task1_err (y=132)
+  Phase 2: x=624   — task2 (y=0), task2_err (y=132)
+  Phase 3: x=984   — task3 (y=0), task3_err (y=132)
+workflow_end (x=1260, y=0)
+```
 
 ---
 
@@ -1440,10 +1568,11 @@ The `revert` transition moves execution back to a previous task, allowing the us
 ## Gotchas
 
 ### Projects
-1. **Create project FIRST, then build inside it** — moving assets renames them with `@projectId:` prefix but does NOT update internal references (childJob `workflow` fields, template names).
-2. **`copy` mode silently no-ops for pre-prefixed workflows** — use `move` instead.
-3. **Component type is `mopCommandTemplate`** not `mop`.
-4. **Members PATCH is full replacement** — include ALL members.
+1. **Use `POST /projects/import` to create projects with all assets atomically** — avoids broken childJob refs, project-locking issues, and intermediate state. Pre-compute the project `_id` so childJob `@projectId:` refs can be wired before push.
+2. **Avoid create + move pattern** — moving assets renames them with `@projectId:` prefix but does NOT update internal references (childJob `workflow` fields, template names).
+3. **Import format differs from create** — OMIT `encodingVersion` from workflow documents (causes silent failure). Workflow `created_by` has NO `_id` but has `firstname`, `inactive`, `sso`. Project `createdBy` HAS `_id`.
+4. **Component type is `mopCommandTemplate`** not `mop`.
+5. **Members PATCH is full replacement** — include ALL members.
 
 ### Workflows
 5. **`canvasName` must come from `tasks.json`** — some differ from method name: `arrayPush`→`push`, `stringConcat`→`concat`.

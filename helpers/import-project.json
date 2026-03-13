@@ -1,6 +1,119 @@
 {
-  "project": {},
-  "conflictMode": "skip",
-  "skipReferenceValidation": false,
-  "assignNewReferences": false
+  "_comment": "Import a project with all assets atomically. Pre-compute _id so childJob @projectId: refs can be wired before push.",
+  "_usage": "POST /automation-studio/projects/import",
+  "_id_generation": "python3 -c \"import secrets; print(secrets.token_hex(12))\"",
+  "_uuid_generation": "python3 -c \"import uuid; print(uuid.uuid4())\"",
+  "project": {
+    "_id": "REPLACE_24_CHAR_HEX",
+    "iid": 1,
+    "name": "REPLACE_PROJECT_NAME",
+    "description": "REPLACE_DESCRIPTION",
+    "thumbnail": "",
+    "backgroundColor": "#FFFFFF",
+    "components": [
+      {
+        "_comment": "Workflow component — reference is a UUID, document is the full workflow object",
+        "iid": 1,
+        "type": "workflow",
+        "reference": "REPLACE_UUID",
+        "folder": "/",
+        "document": {
+          "_comment_name": "Clean name — no @projectId: prefix. Import adds the prefix automatically.",
+          "name": "REPLACE_WORKFLOW_NAME",
+          "type": "automation",
+          "canvasVersion": 3,
+          "font_size": 12,
+          "created": "2026-01-01T00:00:00.000Z",
+          "created_by": {
+            "_comment": "Workflow-level created_by has NO _id but HAS firstname, inactive, sso",
+            "provenance": "CloudAAA",
+            "username": "admin@itential",
+            "firstname": "Admin",
+            "inactive": false,
+            "sso": false
+          },
+          "last_updated": "2026-01-01T00:00:00.000Z",
+          "last_updated_by": {
+            "provenance": "CloudAAA",
+            "username": "admin@itential",
+            "firstname": "Admin",
+            "inactive": false,
+            "sso": false
+          },
+          "createdVersion": "2024.1",
+          "lastUpdatedVersion": "2024.1",
+          "migrationVersion": 1,
+          "tags": [],
+          "groups": [],
+          "uuid": "REPLACE_SAME_UUID_AS_REFERENCE",
+          "scenarios": [],
+          "tasks": {
+            "workflow_start": {
+              "name": "workflow_start",
+              "groups": [],
+              "nodeLocation": {"x": 360, "y": 300}
+            },
+            "workflow_end": {
+              "name": "workflow_end",
+              "groups": [],
+              "nodeLocation": {"x": 900, "y": 300}
+            }
+          },
+          "transitions": {
+            "workflow_start": {
+              "workflow_end": {"type": "standard", "state": "success"}
+            },
+            "workflow_end": {}
+          },
+          "inputSchema": {
+            "type": "object",
+            "properties": {},
+            "required": []
+          },
+          "outputSchema": {
+            "type": "object",
+            "properties": {}
+          }
+        }
+      },
+      {
+        "_comment": "MOP command template — reference is @projectId: Name",
+        "iid": 2,
+        "type": "mopCommandTemplate",
+        "reference": "@REPLACE_PROJECT_ID: REPLACE_TEMPLATE_NAME",
+        "folder": "/",
+        "document": {
+          "name": "REPLACE_TEMPLATE_NAME",
+          "os": "",
+          "passRule": true,
+          "ignoreWarnings": false,
+          "commands": [],
+          "tags": [],
+          "created": "2026-01-01T00:00:00.000Z",
+          "createdBy": {
+            "provenance": "CloudAAA",
+            "username": "admin@itential"
+          },
+          "lastUpdated": "2026-01-01T00:00:00.000Z",
+          "lastUpdatedBy": {
+            "provenance": "CloudAAA",
+            "username": "admin@itential"
+          }
+        }
+      }
+    ],
+    "created": "2026-01-01T00:00:00.000Z",
+    "createdBy": {
+      "_comment": "Project-level createdBy HAS _id — different from workflow-level created_by",
+      "_id": "000000000000000000000000",
+      "provenance": "CloudAAA",
+      "username": "admin@itential"
+    },
+    "lastUpdated": "2026-01-01T00:00:00.000Z",
+    "lastUpdatedBy": {
+      "_id": "000000000000000000000000",
+      "provenance": "CloudAAA",
+      "username": "admin@itential"
+    }
+  }
 }
