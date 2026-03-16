@@ -202,11 +202,13 @@ If both success and error need to reach `workflow_end`, route error to an interm
 
 **Step 9: Pre-submit checklist.**
 - [ ] Task IDs are hex-only (`[0-9a-f]{1,4}`)
-- [ ] `app` values come from apps.json, not tasks.json
+- [ ] `app` and `locationType` values come from apps.json `.name`, NOT tasks.json and NOT the adapter instance name (e.g., `EmailOpensource` not `email`)
+- [ ] `adapter_id` is the adapter **instance** name (e.g., `email`), NOT the type name
 - [ ] `canvasName` values come from tasks.json `canvasName` field
 - [ ] Every adapter task has `adapter_id` in incoming
 - [ ] Every adapter task has an error transition
 - [ ] `evaluation` tasks have both success AND failure transitions
+- [ ] Incoming variable types match task schema exactly (arrays for `to`/`cc`/`bcc`, numbers for `page`/`pageSize`, etc.)
 - [ ] No `$var` references inside nested objects (use merge/makeData)
 - [ ] merge uses `"variable"`, childJob uses `"value"`
 - [ ] childJob has `actor: "job"`, all others have `actor: "Pronghorn"`
@@ -236,13 +238,13 @@ workflow_start → e1a1 (merge) → a1b2 (createChangeRequest) → b2c3 (query) 
 |---------------------|--------|---------|
 | `name` | tasks.json `.name` | `createChangeRequest` |
 | `canvasName` | tasks.json `.canvasName` | `createChangeRequest` (can differ: `arrayPush`→`push`) |
-| `app` | **apps.json** `.name` | `Servicenow` (NOT `ServiceNow` from tasks.json) |
-| `locationType` | Same as `app` for adapters, `null` for applications | `Servicenow` |
-| `displayName` | tasks.json `.displayName` | `ServiceNow` |
+| `app` | **apps.json** `.name` (adapter **type** name) | `Servicenow`, `EmailOpensource` (NOT `email`, NOT `ServiceNow` from tasks.json) |
+| `locationType` | Same as `app` for adapters, `null` for applications | `Servicenow`, `EmailOpensource` |
+| `displayName` | tasks.json `.displayName` | `ServiceNow`, `email` |
 | `location` | tasks.json `.location` | `Adapter` or `Application` |
 | `type` | `"automatic"` for adapters, `"operation"` for utility tasks | `automatic` |
 | `actor` | `"Pronghorn"` always, except childJob which uses `"job"` | `Pronghorn` |
-| `adapter_id` | adapters.json `.results[].id` | `ServiceNow` (instance name) |
+| `adapter_id` | adapters.json `.results[].id` (adapter **instance** name) | `servicenow-prod`, `email` — this goes in `incoming`, NOT in the task-level `app` field |
 | incoming vars | From task schema (multipleTaskDetails) | `body`, `changeId` |
 | outgoing vars | From task schema, set to `null` | `result` |
 
@@ -301,7 +303,15 @@ POST /automation-studio/multipleTaskDetails?dereferenceSchemas=true
 ```
 Use the `pckg` value from apps.json. The response tells you every incoming and outgoing variable with types. Save to `task-schemas.json`.
 
-**Step 4: Understand opaque schemas.**
+**Step 4: Respect data types from the schema.**
+When the schema says a field is `"type": "array"`, you MUST pass an array — even for single values. Common mistakes:
+- `"to": "user@example.com"` → WRONG. Schema says array. Use `"to": ["user@example.com"]`
+- `"cc": ""` → OK only if schema allows string. If array, use `"cc": []`
+- `"pageSize": "100"` → WRONG if schema says number. Use `"pageSize": 100`
+
+Always check `task-schemas.json` for the exact type of each field before wiring.
+
+**Step 5: Understand opaque schemas.**
 Many adapter schemas show `body: {type: "object"}` with no inner detail — the adapter validates internally. To discover required fields:
 1. Build a minimal test workflow: `workflow_start → adapter_task → workflow_end` (with error transition)
 2. Pass `body: {}` (empty object) via a merge task
@@ -1453,6 +1463,8 @@ Response wrapped in `{message, data, metadata}`:
 | "Cannot find workflow" | childJob ref broken after project move | Update `workflow` field with `@projectId:` prefix |
 | Schema validation error | Wrong/missing fields | Check `task-schemas.json` |
 | Adapter error | Wrong app name or adapter down | Check `apps.json` and `GET /health/adapters` |
+| "No config found for Adapter: X" | `app` field uses adapter instance name instead of type name | `app`/`locationType` must be the **type** from `apps.json` (e.g., `EmailOpensource`), not instance name (e.g., `email`). Instance name goes in `adapter_id`. |
+| Silent data mismatch | Field type doesn't match schema (string vs array) | Check `task-schemas.json` — pass arrays for array fields, numbers for number fields |
 
 ### Standalone Test Endpoints
 
