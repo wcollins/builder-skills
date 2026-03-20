@@ -49,6 +49,16 @@ USER ARRIVES
      │                          │  Execute locked plan       │
      │                          │  Test each component       │
      │                          │  Deliver project           │
+     │                          └─────────────┬─────────────┘
+     │                                        │
+     │                                        ▼
+     │                          ┌───────────────────────────┐
+     │                          │    Phase 5: RECONCILE      │
+     │                          │                            │
+     │                          │  Diff built vs designed    │
+     │                          │  Update solution-design.md │ ← as-built
+     │                          │  Amend customer-spec.md    │ ← if scope changed
+     │                          │  Engineer acknowledges ✓   │
      │                          └───────────────────────────┘
      │
      ▼
@@ -66,9 +76,10 @@ USER ARRIVES
 
 **Lock intent before touching the environment.
 Design against the approved intent.
-Build only from the approved design.**
+Build only from the approved design.
+Reconcile what was built back into the spec and design.**
 
-In three words: **spec → environment → implementation.**
+In four words: **spec → environment → implementation → reconcile.**
 
 ### Core Rules
 
@@ -76,6 +87,7 @@ In three words: **spec → environment → implementation.**
    - Setup = route the user
    - Solution-design = understand, approve, discover, design
    - Builder = execute the locked plan
+   - Reconcile = capture deviations, update artifacts
 
 2. **Approval happens once per artifact.**
    - Gate 1 = approve the spec (HLD)
@@ -115,7 +127,17 @@ spec-files/spec-*.md              Generic library spec (never modified)
         │  Gate 2: engineer approves → plan locked
         ▼
 {use-case}/*.json                Built assets (workflows, templates, etc.)
+        │
+        │  Phase 5: reconcile built vs designed
+        ▼
+{use-case}/solution-design.md    Updated with "As-Built" section (deviations + actuals)
+{use-case}/customer-spec.md      Updated with "Amendments" section (if scope changed)
 ```
+
+On **rebuild of the same use case**, the reconciled files are the starting point:
+- Gate 1 reviews the amended `customer-spec.md`, not the original library spec
+- Phase 2-3 references the as-built `solution-design.md` as a known baseline
+- The original library spec (`spec-files/spec-*.md`) is never modified
 
 ## Data Classification
 
@@ -143,14 +165,53 @@ The builder receives a **complete workspace**. Every file it needs is already th
 
 If `tasks.json` or `adapters.json` is missing, the builder stops and tells the user. It does not re-pull.
 
+## Reconcile Contract
+
+Phase 5 is **light and automatic**. After the builder delivers, reconcile runs:
+
+1. **Diff built vs designed** — compare the delivered assets against `solution-design.md`. Identify deviations: added error handlers, swapped adapters, changed task wiring, dropped or added components.
+
+2. **Update `solution-design.md`** — append an `## As-Built` section at the end:
+   - List each deviation with a one-line reason
+   - Record actual asset names and IDs (workflow names, template names, project ID)
+   - Do not rewrite the original design — the locked plan stays intact above
+
+3. **Amend `customer-spec.md`** — only if scope changed during build. Append an `## Amendments` section:
+   - List each scope change (requirement dropped, added, or modified)
+   - Tag with date and reason
+   - Do not rewrite the original spec — the locked intent stays intact above
+
+4. **Engineer acknowledges** — the engineer confirms the reconcile is accurate. This is not a gate — it's a read-receipt. No approval workflow, no blocking.
+
+**What Reconcile does NOT do:**
+- Does not trigger a rebuild
+- Does not reopen Gate 1 or Gate 2
+- Does not modify the original library spec
+- Does not pull new environment data
+
+If deviations are large enough to warrant a redesign, that's a **new iteration** — start from `/itential-setup` with the reconciled files as input.
+
+## Roles by Phase
+
+| Phase | PM | Solution Architect | Infrastructure SME | Platform Engineer | QA | Product Owner |
+|-------|----|--------------------|---------------------|-------------------|----|---------------|
+| **Phase 1: Understand** | Facilitates requirements gathering, manages timeline | Translates business need into structured spec | Validates technical feasibility, provides domain constraints | — | — | Defines business need, success criteria, priorities |
+| **Gate 1: Spec Approval** | Confirms scope matches SOW/timeline | Reviews spec for completeness and technical accuracy | Confirms infrastructure assumptions are sound | — | Reviews acceptance criteria for testability | Approves scope and business intent |
+| **Phase 2: Discover** | — | Guides discovery priorities based on spec | Provides environment context (vendors, versions, topology) | Runs discovery against platform, maps capabilities | — | — |
+| **Phase 3: Design** | Reviews design for timeline/resource impact | Produces solution design, maps spec to platform components | Validates device/protocol/vendor assumptions in design | Confirms platform capabilities, identifies reuse candidates | Plans test strategy based on design | — |
+| **Gate 2: Design Approval** | Confirms design is deliverable within timeline | Approves architecture and component plan | Approves infrastructure and integration approach | Confirms buildability — tasks, adapters, patterns exist | Approves test plan | — |
+| **Phase 4: Build** | Tracks progress, manages scope boundary | Available for design clarification | Available for infrastructure/vendor questions | Builds, tests each component, delivers project | Validates components against acceptance criteria | — |
+| **Phase 5: Reconcile** | Reviews timeline actuals vs estimates for future planning | Reviews deviations — updates design patterns for future use | Reviews infrastructure findings for future specs | Documents deviations and amendments in artifacts | Validates final delivery matches amended scope | Acknowledges any scope amendments |
+
 ## The Mental Model
 
 ```
-INTENT              FEASIBILITY              EXECUTION
-───────────         ──────────────           ──────────
-Understand          Discover + Design        Build
-Lock the spec       Lock the design          Follow the plan
-(Phase 1 + Gate 1)  (Phase 2-3 + Gate 2)     (Phase 4)
+INTENT              FEASIBILITY              EXECUTION            RECONCILE
+───────────         ──────────────           ──────────           ──────────
+Understand          Discover + Design        Build                Diff + Update
+Lock the spec       Lock the design          Follow the plan      Amend artifacts
+(Phase 1 + Gate 1)  (Phase 2-3 + Gate 2)     (Phase 4)            (Phase 5)
 ```
 
-Scope, reasoning, and execution stay in that order. They never mix.
+Scope, reasoning, execution, and reconciliation stay in that order. They never mix.
+On rebuild, the reconciled artifacts become the new starting point.
