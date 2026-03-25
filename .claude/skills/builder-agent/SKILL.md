@@ -268,6 +268,8 @@ If both success and error need to reach `workflow_end`, route error to an interm
 - [ ] merge uses `"variable"`, childJob uses `"value"`
 - [ ] childJob has `actor: "job"`, all others have `actor: "Pronghorn"`
 - [ ] `workflow_end` transition is empty `{}`
+- [ ] Canvas layout follows the spacing convention — success path on y=0 spine, error handlers drop to y=+132
+- [ ] No tasks overlap (minimum +264px x-delta between columns)
 
 **Complete working example:** Read `helpers/reference-adapter-workflow.json` before building. It's a tested workflow (merge → adapter create → query → adapter update) with `_comment` fields explaining every decision.
 
@@ -747,7 +749,14 @@ POST /automation-studio/multipleTaskDetails?dereferenceSchemas=true
 
 ### nodeLocation Spacing Convention
 
-Follow consistent spacing for readability on the Automation Studio canvas:
+**Ask the engineer before starting:** "Do you prefer a horizontal layout (left to right) or vertical (top to bottom)?"
+
+- **Horizontal** is the Automation Studio default — tasks advance left-to-right, branches drop down. Use this unless the engineer says otherwise.
+- **Vertical** works better for deep workflows with many sequential phases where horizontal becomes too wide to read.
+
+The rules below assume **horizontal**. For vertical, swap x and y roles (phases advance on y, branches offset on x).
+
+#### Horizontal Layout (default)
 
 | Rule | Value |
 |------|-------|
@@ -756,18 +765,27 @@ Follow consistent spacing for readability on the Automation Studio canvas:
 | Stacked tasks in same column (y-delta) | +132px |
 | Last task → workflow_end (x-delta) | +276px |
 
-**Layout strategy:** Group related tasks vertically at the same x-coordinate:
-- A phase's main task + its error handler share the same x, offset by +132px in y
-- childJob + output extraction query in the same column
-- merge + the adapter call it feeds in the same column
+**Clean canvas principles:**
+- The **success path is the spine** — keep it on `y=0`, advancing left to right
+- **Error handlers drop down** — same x as the failing task, `y=+132` or `y=+264`
+- **Branch convergence** — tasks that merge back to the success path return to `y=0`
+- **Group related tasks** at the same x: merge + the adapter it feeds, childJob + its query extractor
+- **Never overlap** — maintain at least +264px x-delta between task columns
 
 Example for a 3-phase workflow:
 ```
-workflow_start (x=0, y=0)
-  Phase 1: x=264   — task1 (y=0), task1_err (y=132)
-  Phase 2: x=624   — task2 (y=0), task2_err (y=132)
-  Phase 3: x=984   — task3 (y=0), task3_err (y=132)
+workflow_start (x=0,   y=0)
+  Phase 1:   x=264  — task1     (y=0),   task1_err (y=132)
+  Phase 2:   x=624  — task2     (y=0),   task2_err (y=132)
+  Phase 3:   x=984  — task3     (y=0),   task3_err (y=132)
 workflow_end (x=1260, y=0)
+```
+
+For a childJob phase with query + evaluation:
+```
+  x=264  — childJob     (y=0)
+  x=624  — query        (y=0)   ← extracts taskStatus from job_details
+  x=984  — evaluation   (y=0),  eval_fail (y=132)
 ```
 
 ---
