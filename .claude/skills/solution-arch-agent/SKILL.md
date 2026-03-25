@@ -243,6 +243,30 @@ Produce the solution design from the approved spec + feasibility results.
 └─────────────────────────────────────┴────────────────────────────────────────┘
 ```
 
+**D. Modular Design — Decompose First**
+
+Before listing components, decide the parent/child split. Ask for each phase in the spec:
+
+- Can it be run and tested independently? → **Child workflow**
+- Does it make sense to reuse it in other use cases? → **Child workflow**
+- Does it loop over multiple items? → **Child workflow with `loopType`**
+- Is it a one-off step that only makes sense in this flow? → **Task in orchestrator**
+
+**Rule:** Each logical phase becomes a child workflow. The orchestrator sequences them via childJob. This makes every phase independently testable before the orchestrator is built.
+
+**Example decomposition:**
+```
+Spec phases → Component split
+─────────────────────────────────────────────────────────
+Pre-flight validation        → Child: Pre-Flight Check
+Execute change               → Child: Execute Change
+Verify propagation           → Child: Verify Propagation
+Rollback on failure          → Child: Rollback
+Notifications + ticket close → Tasks in orchestrator
+```
+
+The orchestrator is always the last thing built, after all children are tested.
+
 **D. Component Inventory**
 ```
 ┌────┬──────────────────────────────┬─────────────────────┬──────────┐

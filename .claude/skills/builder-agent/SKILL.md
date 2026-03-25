@@ -83,15 +83,17 @@ This skill covers everything needed to build and test Itential automation assets
 ## Build Lifecycle
 
 ```
-1. Create project           → container for all assets
-2. Discover tasks           → search tasks.json, fetch schemas
-3. Build workflows          → wire tasks, transitions, $var refs
-4. Build templates          → Jinja2 (config gen) or TextFSM (output parsing)
-5. Build command templates  → MOP pre/post checks with validation rules
-6. Add assets to project    → move/copy into the project
-7. Test                     → jobs/start, check results
-8. Debug                    → check job.error, filesystem-first
-9. Reconcile                → diff built vs designed, update artifacts
+1. Decompose                → identify parent/child split before writing any code
+2. Create project           → container for all assets
+3. Discover tasks           → search tasks.json, fetch schemas
+4. Build children first     → each child workflow independently testable
+5. Build templates          → Jinja2 (config gen) or TextFSM (output parsing)
+6. Build command templates  → MOP pre/post checks with validation rules
+7. Build orchestrator last  → parent wires tested children via childJob
+8. Add assets to project    → move/copy into the project
+9. Test                     → jobs/start, check results
+10. Debug                    → check job.error, filesystem-first
+11. Reconcile                → diff built vs designed, update artifacts
 ```
 
 ---
@@ -101,6 +103,24 @@ This skill covers everything needed to build and test Itential automation assets
 ### Guide 1: Build a workflow end-to-end
 
 Follow these steps in order. Do not skip any step.
+
+**Step 0: Decompose before you build.**
+
+Before writing any JSON, identify the parent/child split from the solution design. Ask for each phase:
+
+- Can this phase be run and tested on its own? → **Child workflow**
+- Does it loop over multiple items (devices, records)? → **Child workflow with `loopType`**
+- Is it reusable across other use cases? → **Child workflow**
+- Is it a simple sequential step with no independent test value? → **Task in orchestrator**
+
+Build order is always: **children first, orchestrator last.** The orchestrator is just childJob calls to tested children — it should not contain raw adapter tasks unless there is no logical way to split.
+
+**Reference helpers for parent/child patterns:**
+- `helpers/reference-child-workflow.json` — child with try-catch (always sets `taskStatus`, always completes)
+- `helpers/reference-parent-workflow.json` — parent with childJob → query → evaluation branching
+- `helpers/reference-childjob-loop.json` — parent + child with `data_array` loop (parallel or sequential)
+
+Read these before building any multi-workflow solution.
 
 **Step 1: Find tasks.** Search `tasks.json` for the tasks you need:
 ```bash
