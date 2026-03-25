@@ -41,3 +41,4 @@ setup-temp/
 
 # Auth tokens
 **/.auth.json
+blog/
