@@ -8,7 +8,9 @@ Spec-driven infrastructure automation and orchestration — delivered by AI agen
 
 ## What This Is
 
-A set of AI agent skills for the Itential Platform. Agents deliver automation end-to-end — from requirements through feasibility, design, build, and as-built documentation — or explore and build freestyle.
+Infrastructure delivery has never had a real operating model. Teams build automation ad hoc — no consistent structure, no traceability, no repeatable process from requirements through delivery.
+
+These skills introduce a new way of working: **Spec-Driven Development** for infrastructure automation. Every delivery follows the same five stages — with AI agents doing the heavy lifting at each stage and engineers approving the artifacts that move it forward.
 
 ```
 Requirements  →  Feasibility  →  Design  →  Build  →  As-Built
@@ -20,6 +22,8 @@ Requirements  →  Feasibility  →  Design  →  Build  →  As-Built
   spec.md         (approved)      design.md    (delivered) (approved)
   (approved)                      (approved)
 ```
+
+The result is infrastructure automation that is traceable, repeatable, and delivered faster.
 
 ---
 
