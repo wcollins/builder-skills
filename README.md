@@ -4,13 +4,9 @@
 
 Spec-driven infrastructure automation and orchestration — delivered by AI agents on Itential.
 
----
+Most infrastructure automation is built without a delivery model. No consistent stages, no traceability, no repeatable process — just ad hoc builds that are hard to maintain, document, or hand off.
 
-## What This Is
-
-Infrastructure delivery has never had a real operating model. Teams build automation ad hoc — no consistent structure, no traceability, no repeatable process from requirements through delivery.
-
-These skills introduce a new way of working: **Spec-Driven Development** for infrastructure automation. Every delivery follows the same five stages — with AI agents doing the heavy lifting at each stage and engineers approving the artifacts that move it forward.
+This repository introduces **Spec-Driven Development** for infrastructure automation. Every delivery follows five structured stages, with AI agents executing each stage and engineers approving the artifacts that gate the next one.
 
 ```
 Requirements  →  Feasibility  →  Design  →  Build  →  As-Built
@@ -42,6 +38,27 @@ cp environments/cloud-lab.env my-use-case/.env   # edit with your credentials
 ```
 
 See [`docs/quickstart.md`](docs/quickstart.md) for the full setup and first delivery walkthrough.
+
+---
+
+## How to Use It
+
+```
+"I need to automate VLAN provisioning on my platform"
+→ /itential-builder:spec-agent
+
+"I have a FlowAgent that's been running in production — productionize it"
+→ /itential-builder:flowagent-to-spec
+
+"I have an existing project with no documentation"
+→ /itential-builder:project-to-spec
+
+"I want to explore what's available on my platform"
+→ /itential-builder:explore
+
+"Run a compliance check across my devices"
+→ /itential-builder:itential-golden-config
+```
 
 ---
 
