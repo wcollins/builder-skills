@@ -104,6 +104,7 @@ Each spec has 9 sections: Problem Statement, Flow, Phases, Design Decisions, Sco
 
 ## Docs
 
+- [`docs/quickstart.md`](docs/quickstart.md) — end-to-end user guide: install, setup, first delivery
 - [`docs/developer-flow.md`](docs/developer-flow.md) — full lifecycle diagram and design principles
 - [`docs/builder-flow.md`](docs/builder-flow.md) — build sequence and import pattern
 - [`helpers/`](helpers/) — JSON scaffolds and reference workflow patterns
