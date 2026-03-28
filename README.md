@@ -29,11 +29,10 @@ The result is infrastructure automation that is traceable, repeatable, and deliv
 
 ## Getting Started
 
-Add the marketplace and install the plugin:
+Install the plugin:
 
 ```bash
-/plugin marketplace add itential/builder-skills
-/plugin install itential-builder@itential-builder
+/plugin install itential-builder@claude-plugins-official
 ```
 
 Copy an environment template and point at your platform:
