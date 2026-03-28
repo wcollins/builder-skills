@@ -114,6 +114,7 @@ Before contributing, you'll need to sign our [Contributor License Agreement](CLA
 
 - **Bug Reports**: [Open an issue](https://github.com/itential/builder-skills/issues/new)
 - **Questions**: [Start a discussion](https://github.com/itential/builder-skills/discussions)
+- **Lead Maintainer**: [@keepithuman](https://github.com/keepithuman)
 - **Maintainer**: [@wcollins](https://github.com/wcollins)
 
 ## License
