@@ -1,6 +1,50 @@
 # Quickstart Guide
 
-From install to your first delivery in minutes.
+Infrastructure delivery has never had a real operating model. Teams build automation ad hoc — no consistent structure, no traceability, no repeatable process from requirements through delivery.
+
+These skills introduce a new way of working: **Spec-Driven Development** for infrastructure automation. Every delivery follows the same five stages — Requirements → Feasibility → Design → Build → As-Built — with AI agents doing the heavy lifting at each stage and engineers approving the artifacts that move it forward.
+
+The result is infrastructure automation that is traceable, repeatable, and delivered faster.
+
+---
+
+## How It Works
+
+```
+Requirements  →  Feasibility  →  Design  →  Build  →  As-Built
+```
+
+Each stage has a named agent, a clear input, and an artifact the engineer approves before moving forward. Nothing skips a stage. Nothing moves without sign-off.
+
+---
+
+## Four Ways to Work
+
+**01 — Deliver from Spec**
+End-to-end delivery with artifact-based approvals at every stage.
+```
+/itential-builder:spec-agent → /itential-builder:solution-arch-agent → /itential-builder:builder-agent
+```
+
+**02 — FlowAgent to Spec**
+An agent proves a pattern. Spec-Driven Development productionizes it as a deterministic workflow.
+```
+/itential-builder:flowagent-to-spec → /itential-builder:solution-arch-agent → /itential-builder:builder-agent
+```
+
+**03 — Generate Spec from Project**
+Existing automation, no documentation. Extract the spec and design from what was built.
+```
+/itential-builder:project-to-spec
+```
+
+**04 — Explore**
+Connect to a platform, browse capabilities, build freely. No lifecycle required.
+```
+/itential-builder:explore
+```
+
+---
 
 ---
 
