@@ -1,0 +1,30 @@
+{
+  "name": "itential-builder",
+  "owner": {
+    "name": "Itential",
+    "email": "support@itential.com"
+  },
+  "metadata": {
+    "description": "AI agent skills for the Itential Platform — deliver infrastructure automation from spec through build.",
+    "version": "1.0.0"
+  },
+  "plugins": [
+    {
+      "name": "itential-builder",
+      "source": {
+        "source": "github",
+        "repo": "itential/builder-skills-dev"
+      },
+      "description": "AI agent skills for the Itential Platform — deliver infrastructure automation from spec through build. Covers requirements, feasibility, design, build, as-built documentation, FlowAgent, IAG, and MOP.",
+      "version": "1.0.0",
+      "author": {
+        "name": "Itential"
+      },
+      "homepage": "https://github.com/itential/builder-skills",
+      "repository": "https://github.com/itential/builder-skills-dev",
+      "license": "GPL-3.0-or-later",
+      "keywords": ["itential", "network-automation", "infrastructure", "flowagent", "iag"],
+      "category": "automation"
+    }
+  ]
+}

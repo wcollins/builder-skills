@@ -8,5 +8,6 @@
   "homepage": "https://github.com/itential/builder-skills",
   "repository": "https://github.com/itential/builder-skills",
   "license": "GPL-3.0-or-later",
-  "keywords": ["itential", "network-automation", "infrastructure", "flowagent", "iag"]
+  "keywords": ["itential", "network-automation", "infrastructure", "flowagent", "iag"],
+  "commands": "./.claude/skills"
 }
