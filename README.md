@@ -1,8 +1,8 @@
-# Itential — Agentic Builder Skills for Automation and Orchestration
+# Itential — Agentic Builder Skills
 
 [![License](https://img.shields.io/badge/License-GPL--3.0-blue.svg)](LICENSE)
 
-From spec to delivery — infrastructure automation and orchestration driven by AI agents.
+Spec-driven infrastructure automation and orchestration — delivered by AI agents on Itential.
 
 ---
 
