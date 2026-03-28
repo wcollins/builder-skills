@@ -17,8 +17,10 @@ Each skill owns a domain. **Invoke the skill using the Skill tool before working
 | `/iag` | — | Automation Gateway: IAG services (Python, Ansible, OpenTofu). |
 | `/flowagent` | — | AI Agents: configure LLM providers, tools, missions. |
 | `/itential-mop` | — | Command templates with validation rules. |
-
-> Operator skills (devices, golden config, inventory, LCM) → `itential/operator-skills`
+| `/itential-devices` | — | Devices, backups, diffs, device groups. |
+| `/itential-golden-config` | — | Golden config, compliance, grading, remediation. |
+| `/itential-inventory` | — | Device inventories, nodes, actions, tags. |
+| `/itential-lcm` | — | Resource models, instances, lifecycle actions. |
 
 ### Delivery Lifecycle
 
