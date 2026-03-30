@@ -25,10 +25,17 @@ The result is infrastructure automation that is traceable, repeatable, and deliv
 
 ## Getting Started
 
-Install the plugin:
+**Official** (once approved on the Claude marketplace):
 
 ```bash
 /plugin install itential-builder@claude-plugins-official
+```
+
+**Early access** (available now):
+
+```bash
+/plugin marketplace add itential/builder-skills
+/plugin install itential-builder@itential-builder
 ```
 
 Copy an environment template and point at your platform:
