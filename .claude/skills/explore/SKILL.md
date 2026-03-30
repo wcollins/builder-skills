@@ -31,7 +31,7 @@ Connects you to a platform, pulls everything needed to work freely, and routes y
 
 Check for credentials in this order:
 1. `{use-case}/.env` — use-case-specific
-2. `environments/*.env` — pre-configured environments at repo root
+2. `${CLAUDE_PLUGIN_ROOT}/environments/*.env` — pre-configured environments at repo root
 
 If found, authenticate automatically. If not, ask:
 1. Platform URL

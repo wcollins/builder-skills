@@ -40,12 +40,12 @@ Write YAML → iagctl db import → Services available → Workflows call them
 3. **`iagctl run service`** — test from CLI
 4. **`GatewayManager.runService`** — call from Itential workflows
 
-**Always start from a helper template.** Read the matching example from `helpers/iag/` first, then modify:
-- Python service → `helpers/iag/example-python-service.yaml`
-- Ansible service → `helpers/iag/example-ansible-service.yaml`
-- OpenTofu service → `helpers/iag/example-opentofu-service.yaml`
-- Multi-service chain → `helpers/iag/example-multi-service-chain.yaml`
-- Full schema reference → `helpers/iag/service-file-schema.md`
+**Always start from a helper template.** Read the matching example from `${CLAUDE_PLUGIN_ROOT}/helpers/iag/` first, then modify:
+- Python service → `${CLAUDE_PLUGIN_ROOT}/helpers/iag/example-python-service.yaml`
+- Ansible service → `${CLAUDE_PLUGIN_ROOT}/helpers/iag/example-ansible-service.yaml`
+- OpenTofu service → `${CLAUDE_PLUGIN_ROOT}/helpers/iag/example-opentofu-service.yaml`
+- Multi-service chain → `${CLAUDE_PLUGIN_ROOT}/helpers/iag/example-multi-service-chain.yaml`
+- Full schema reference → `${CLAUDE_PLUGIN_ROOT}/helpers/iag/service-file-schema.md`
 
 **Do NOT build YAML from scratch. Read the helper first.**
 
@@ -1020,12 +1020,12 @@ jobs:
 
 ## Helper Templates
 
-**Always start from a helper template.** Read the matching example from `helpers/iag/` first, then modify:
+**Always start from a helper template.** Read the matching example from `${CLAUDE_PLUGIN_ROOT}/helpers/iag/` first, then modify:
 
 | File | Purpose |
 |------|---------|
-| `helpers/iag/example-python-service.yaml` | Python script service |
-| `helpers/iag/example-ansible-service.yaml` | Ansible playbook service |
-| `helpers/iag/example-opentofu-service.yaml` | OpenTofu plan service |
-| `helpers/iag/example-multi-service-chain.yaml` | Multi-service orchestration |
-| `helpers/iag/service-file-schema.md` | Full YAML schema reference |
+| `${CLAUDE_PLUGIN_ROOT}/helpers/iag/example-python-service.yaml` | Python script service |
+| `${CLAUDE_PLUGIN_ROOT}/helpers/iag/example-ansible-service.yaml` | Ansible playbook service |
+| `${CLAUDE_PLUGIN_ROOT}/helpers/iag/example-opentofu-service.yaml` | OpenTofu plan service |
+| `${CLAUDE_PLUGIN_ROOT}/helpers/iag/example-multi-service-chain.yaml` | Multi-service orchestration |
+| `${CLAUDE_PLUGIN_ROOT}/helpers/iag/service-file-schema.md` | Full YAML schema reference |

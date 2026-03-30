@@ -118,9 +118,9 @@ Before writing any JSON, identify the parent/child split from the solution desig
 Build order is always: **children first, orchestrator last.** The orchestrator is just childJob calls to tested children — it should not contain raw adapter tasks unless there is no logical way to split.
 
 **Reference helpers for parent/child patterns:**
-- `helpers/reference-child-workflow.json` — child with try-catch (always sets `taskStatus`, always completes)
-- `helpers/reference-parent-workflow.json` — parent with childJob → query → evaluation branching
-- `helpers/reference-childjob-loop.json` — parent + child with `data_array` loop (parallel or sequential)
+- `${CLAUDE_PLUGIN_ROOT}/helpers/reference-child-workflow.json` — child with try-catch (always sets `taskStatus`, always completes)
+- `${CLAUDE_PLUGIN_ROOT}/helpers/reference-parent-workflow.json` — parent with childJob → query → evaluation branching
+- `${CLAUDE_PLUGIN_ROOT}/helpers/reference-childjob-loop.json` — parent + child with `data_array` loop (parallel or sequential)
 
 Read these before building any multi-workflow solution.
 
@@ -273,7 +273,7 @@ If both success and error need to reach `workflow_end`, route error to an interm
 - [ ] Canvas layout follows the spacing convention — success path on y=0 spine, error handlers drop to y=+132
 - [ ] No tasks overlap (minimum +264px x-delta between columns)
 
-**Complete working example:** Read `helpers/reference-adapter-workflow.json` before building. It's a tested workflow (merge → adapter create → query → adapter update) with `_comment` fields explaining every decision.
+**Complete working example:** Read `${CLAUDE_PLUGIN_ROOT}/helpers/reference-adapter-workflow.json` before building. It's a tested workflow (merge → adapter create → query → adapter update) with `_comment` fields explaining every decision.
 
 **How the example works — what each task does and why:**
 
@@ -408,9 +408,9 @@ The path comes from what you saw in Step 5 — not from the native API docs, not
 ### Guide 3: Add a task to an existing workflow
 
 **Step 1:** Read the helper template for the task type:
-- Adapter task → `helpers/workflow-task-adapter.json`
-- Application task → `helpers/workflow-task-application.json`
-- childJob → `helpers/workflow-task-childjob.json`
+- Adapter task → `${CLAUDE_PLUGIN_ROOT}/helpers/workflow-task-adapter.json`
+- Application task → `${CLAUDE_PLUGIN_ROOT}/helpers/workflow-task-application.json`
+- childJob → `${CLAUDE_PLUGIN_ROOT}/helpers/workflow-task-childjob.json`
 
 **Step 2:** Fill in the fields using the mapping rules from Guide 1 Step 4.
 
@@ -1092,7 +1092,7 @@ Conditional branching. **MUST have BOTH success AND failure transitions.**
 
 ### childJob
 
-Run another workflow as a sub-job. **Use helper template** `helpers/workflow-task-childjob.json`.
+Run another workflow as a sub-job. **Use helper template** `${CLAUDE_PLUGIN_ROOT}/helpers/workflow-task-childjob.json`.
 
 **Critical differences from normal tasks:**
 - **`actor` MUST be `"job"`** — not `"Pronghorn"`
@@ -1748,14 +1748,14 @@ Read these first. They have the correct wrapper, required fields, and structure.
 
 | When you need to... | Read this helper | Then POST to |
 |---------------------|------------------|--------------|
-| Create a project | `helpers/create-project.json` | `POST /automation-studio/projects` |
-| Create a workflow | `helpers/create-workflow.json` | `POST /automation-studio/automations` |
-| Create a Jinja2 template | `helpers/create-template-jinja2.json` | `POST /automation-studio/templates` |
-| Create a TextFSM template | `helpers/create-template-textfsm.json` | `POST /automation-studio/templates` |
-| Create a MOP command template | `helpers/create-command-template.json` | `POST /mop/createTemplate` |
-| Update a MOP template | `helpers/update-command-template.json` | `POST /mop/updateTemplate/{name}` |
-| Add assets to a project | `helpers/add-components-to-project.json` | `POST /projects/{id}/components/add` |
-| Update project membership | `helpers/update-project-members.json` | `PATCH /projects/{id}` |
+| Create a project | `${CLAUDE_PLUGIN_ROOT}/helpers/create-project.json` | `POST /automation-studio/projects` |
+| Create a workflow | `${CLAUDE_PLUGIN_ROOT}/helpers/create-workflow.json` | `POST /automation-studio/automations` |
+| Create a Jinja2 template | `${CLAUDE_PLUGIN_ROOT}/helpers/create-template-jinja2.json` | `POST /automation-studio/templates` |
+| Create a TextFSM template | `${CLAUDE_PLUGIN_ROOT}/helpers/create-template-textfsm.json` | `POST /automation-studio/templates` |
+| Create a MOP command template | `${CLAUDE_PLUGIN_ROOT}/helpers/create-command-template.json` | `POST /mop/createTemplate` |
+| Update a MOP template | `${CLAUDE_PLUGIN_ROOT}/helpers/update-command-template.json` | `POST /mop/updateTemplate/{name}` |
+| Add assets to a project | `${CLAUDE_PLUGIN_ROOT}/helpers/add-components-to-project.json` | `POST /projects/{id}/components/add` |
+| Update project membership | `${CLAUDE_PLUGIN_ROOT}/helpers/update-project-members.json` | `PATCH /projects/{id}` |
 
 ### Task templates — embed these in your workflow
 
@@ -1763,9 +1763,9 @@ When adding a task to a workflow, read the matching template and fill in the fie
 
 | Task type | Read this helper | Key fields to set |
 |-----------|------------------|-------------------|
-| Application task (WorkFlowEngine, TemplateBuilder, etc.) | `helpers/workflow-task-application.json` | `app`, `name`, `canvasName`, incoming/outgoing from schema |
-| Adapter task (ServiceNow, etc.) | `helpers/workflow-task-adapter.json` | `app`/`locationType` from apps.json, add `adapter_id`, add error transition |
-| childJob task | `helpers/workflow-task-childjob.json` | `actor: "job"`, `task: ""`, variables use `{"task","value"}` syntax |
+| Application task (WorkFlowEngine, TemplateBuilder, etc.) | `${CLAUDE_PLUGIN_ROOT}/helpers/workflow-task-application.json` | `app`, `name`, `canvasName`, incoming/outgoing from schema |
+| Adapter task (ServiceNow, etc.) | `${CLAUDE_PLUGIN_ROOT}/helpers/workflow-task-adapter.json` | `app`/`locationType` from apps.json, add `adapter_id`, add error transition |
+| childJob task | `${CLAUDE_PLUGIN_ROOT}/helpers/workflow-task-childjob.json` | `actor: "job"`, `task: ""`, variables use `{"task","value"}` syntax |
 
 ### Reference workflows — study these patterns
 
@@ -1773,8 +1773,8 @@ These are complete, tested workflows. Read them to understand how tasks connect,
 
 | Pattern | Read this helper | What it teaches |
 |---------|------------------|-----------------|
-| Adapter workflow with merge + query + error handling | `helpers/reference-adapter-workflow.json` | merge builds objects, adapter tasks need error transitions, query extracts from adapter response, newVariable as error handler |
-| childJob loop (parent + child) | `helpers/reference-childjob-loop.json` | Has both parent and child workflows. data_array input, parallel/sequential, extracting loop results, try-catch in child |
-| childJob with evaluation (parent orchestrator) | `helpers/reference-parent-workflow.json` | childJob → query → evaluation pattern for checking child success/failure |
-| merge → makeData pattern | `helpers/reference-merge-makedata.json` | Building template variables with merge, then string substitution with makeData |
-| Child with makeData/query/merge | `helpers/reference-child-workflow.json` | Data transformation patterns inside a child workflow |
+| Adapter workflow with merge + query + error handling | `${CLAUDE_PLUGIN_ROOT}/helpers/reference-adapter-workflow.json` | merge builds objects, adapter tasks need error transitions, query extracts from adapter response, newVariable as error handler |
+| childJob loop (parent + child) | `${CLAUDE_PLUGIN_ROOT}/helpers/reference-childjob-loop.json` | Has both parent and child workflows. data_array input, parallel/sequential, extracting loop results, try-catch in child |
+| childJob with evaluation (parent orchestrator) | `${CLAUDE_PLUGIN_ROOT}/helpers/reference-parent-workflow.json` | childJob → query → evaluation pattern for checking child success/failure |
+| merge → makeData pattern | `${CLAUDE_PLUGIN_ROOT}/helpers/reference-merge-makedata.json` | Building template variables with merge, then string substitution with makeData |
+| Child with makeData/query/merge | `${CLAUDE_PLUGIN_ROOT}/helpers/reference-child-workflow.json` | Data transformation patterns inside a child workflow |

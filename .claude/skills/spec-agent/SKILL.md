@@ -44,7 +44,7 @@ If the engineer wants to explore the platform freely (browse adapters, try tasks
 
 ## Step 1: Pick a Spec
 
-Present available specs from `spec-files/`, grouped by category:
+Present available specs from `${CLAUDE_PLUGIN_ROOT}/spec-files/`, grouped by category:
 
 | Category | Specs |
 |----------|-------|
@@ -62,7 +62,7 @@ Or the engineer describes what they need and you recommend a spec.
 ```bash
 mkdir -p {use-case-name}
 # Only fork if it doesn't already exist — engineer may have customized from a previous session
-[ ! -f {use-case}/customer-spec.md ] && cp spec-files/spec-port-turn-up.md {use-case}/customer-spec.md
+[ ! -f {use-case}/customer-spec.md ] && cp ${CLAUDE_PLUGIN_ROOT}/spec-files/spec-port-turn-up.md {use-case}/customer-spec.md
 ```
 
 If `{use-case}/customer-spec.md` already exists, **reuse it** — do not overwrite.

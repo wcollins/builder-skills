@@ -48,7 +48,7 @@ If requirements are unchanged but the implementation plan needs to change, invok
 ## Artifact Lifecycle
 
 ```
-spec-files/spec-*.md          ← Generic library spec (never modified)
+${CLAUDE_PLUGIN_ROOT}/spec-files/spec-*.md          ← Generic library spec (never modified)
         │
         │  forked by /spec-agent
         ▼
@@ -121,7 +121,7 @@ Go through the spec's Discovery Questions. Skip anything already answered by the
 Check for credentials in this order:
 1. `{use-case}/.auth.json` — already authenticated (reuse token)
 2. `{use-case}/.env` — credentials saved during setup
-3. `environments/*.env` — pre-configured environments at repo root
+3. `${CLAUDE_PLUGIN_ROOT}/environments/*.env` — pre-configured environments at repo root
 
 If none found, ask the engineer for:
 1. Platform URL
